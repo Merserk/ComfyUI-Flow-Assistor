@@ -21,9 +21,26 @@ try:
 except ImportError:
     RES_CLASSES, RES_DISPLAY = {}, {}
 
-# Combine all mappings
-NODE_CLASS_MAPPINGS = {**CAM_CLASSES, **QUEUE_CLASSES, **FOLDER_CLASSES, **RES_CLASSES}
-NODE_DISPLAY_NAME_MAPPINGS = {**CAM_DISPLAY, **QUEUE_DISPLAY, **FOLDER_DISPLAY, **RES_DISPLAY}
+try:
+    from .image_resolution_fit_node import NODE_CLASS_MAPPINGS as FIT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as FIT_DISPLAY
+except ImportError:
+    FIT_CLASSES, FIT_DISPLAY = {}, {}
 
-# WEB_DIRECTORY is removed because path_helper.js is deleted
+# Combine all mappings
+NODE_CLASS_MAPPINGS = {
+    **CAM_CLASSES, 
+    **QUEUE_CLASSES, 
+    **FOLDER_CLASSES, 
+    **RES_CLASSES,
+    **FIT_CLASSES
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    **CAM_DISPLAY, 
+    **QUEUE_DISPLAY, 
+    **FOLDER_DISPLAY, 
+    **RES_DISPLAY,
+    **FIT_DISPLAY
+}
+
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

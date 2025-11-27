@@ -2,11 +2,12 @@
     ComfyUI-Flow-Assistor
     <br>
     <sub><sup><i>Essential utility nodes for ComfyUI</i></sup></sub>
-    <br>
+</h1>
 
-<img width="2365" height="1273" alt="image" src="https://github.com/user-attachments/assets/c9306ce8-96b0-4535-91f7-144f2ac27840" />
+<p align="center">
+  <img width="100%" alt="image" src="https://github.com/user-attachments/assets/c9306ce8-96b0-4535-91f7-144f2ac27840" />
+</p>
 
-<br>
 <br>
 
 # Get Started

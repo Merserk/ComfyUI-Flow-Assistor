@@ -1,26 +1,12 @@
-```markdown
-# 🌊 ComfyUI Flow Assistor
+## Install
 
-<p align="center">
-  <img src="https://img.shields.io/badge/ComfyUI-Custom_Nodes-blue?style=for-the-badge&logo=python" alt="ComfyUI">
-  <img src="https://img.shields.io/github/license/Merserk/ComfyUI-Flow-Assistor?style=for-the-badge" alt="License">
-  <br>
-  <b>Streamline your batch generation, automate prompt engineering, and manage resolutions with ease.</b>
-</p>
-
-<hr>
-
-**ComfyUI Flow Assistor** is a suite of custom nodes designed to handle the "boring" parts of your workflow. Whether you are running complex batch jobs from text files, iterating through prompt variations, or trying to find the perfect camera angle without typing out paragraphs of technical jargon, this pack has you covered.
-
-## 📦 Installation
-
-1. Navigate to your ComfyUI `custom_nodes` directory.
-2. Clone this repository:
-   ```bash
-   cd ComfyUI/custom_nodes
-   git clone https://github.com/Merserk/ComfyUI-Flow-Assistor.git
-   ```
-3. Restart ComfyUI.
+1. Install the great [ComfyUI](https://github.com/comfyanonymous/ComfyUI).
+2. Clone this repo into `custom_nodes`:
+    ```bash
+    cd ComfyUI/custom_nodes
+    git clone https://github.com/Merserk/ComfyUI-Flow-Assistor.git
+    ```
+3. Start up ComfyUI.
 
 <br>
 

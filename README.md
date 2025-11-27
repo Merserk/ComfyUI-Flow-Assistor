@@ -1,3 +1,13 @@
+<h1 align="center">
+    ComfyUI-Flow-Assistor
+    <br>
+    <sub><sup><i>Essential utility nodes for ComfyUI</i></sup></sub>
+    <br>
+
+<img width="2365" height="1273" alt="image" src="https://github.com/user-attachments/assets/c9306ce8-96b0-4535-91f7-144f2ac27840" />
+
+# Get Started
+
 ## Install
 
 1. Install the great [ComfyUI](https://github.com/comfyanonymous/ComfyUI).

@@ -136,4 +136,4 @@ Stop guessing pixel dimensions. This node groups resolutions by Megapixel count 
 If you have ideas for new flow-assisting nodes or improvements to existing ones, feel free to open an issue or submit a pull request!
 
 ## 📄 License
-MIT License. Feel free to use this in any project, personal or commercial.
+AGPL-3.0 License. Feel free to use this in any project, personal or commercial.

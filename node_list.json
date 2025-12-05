@@ -3,5 +3,7 @@
     "PromptQueueFromFolder": "Prompt Queue (From Folder)",
     "CameraAngleControl": "Camera Angle Control",
     "ResolutionSelectNode": "Resolution Selector (Groups)",
-    "ImageResolutionFitNode": "Image Resolution Fit"
+    "ImageResolutionFitNode": "Image Resolution Fit",
+    "MultiplicationNode": "Multiplication (Dual & Latent)",
+    "VRAMRAMCleanerNode": "VRAM/RAM Cleaner"
 }

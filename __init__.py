@@ -26,13 +26,25 @@ try:
 except ImportError:
     FIT_CLASSES, FIT_DISPLAY = {}, {}
 
+try:
+    from .multiplication_node import NODE_CLASS_MAPPINGS as MULT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as MULT_DISPLAY
+except ImportError:
+    MULT_CLASSES, MULT_DISPLAY = {}, {}
+
+try:
+    from .clean_gpu_node import NODE_CLASS_MAPPINGS as CLEAN_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as CLEAN_DISPLAY
+except ImportError:
+    CLEAN_CLASSES, CLEAN_DISPLAY = {}, {}
+
 # Combine all mappings
 NODE_CLASS_MAPPINGS = {
     **CAM_CLASSES, 
     **QUEUE_CLASSES, 
     **FOLDER_CLASSES, 
     **RES_CLASSES,
-    **FIT_CLASSES
+    **FIT_CLASSES,
+    **MULT_CLASSES,
+    **CLEAN_CLASSES
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -40,7 +52,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **QUEUE_DISPLAY, 
     **FOLDER_DISPLAY, 
     **RES_DISPLAY,
-    **FIT_DISPLAY
+    **FIT_DISPLAY,
+    **MULT_DISPLAY,
+    **CLEAN_DISPLAY
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

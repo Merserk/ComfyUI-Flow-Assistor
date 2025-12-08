@@ -112,6 +112,60 @@ Stop guessing pixel dimensions. This node groups resolutions by Megapixel count 
 
 </details>
 
+---
+
+### 5. 🖼️ Image Resolution Fit
+**Resize images while keeping aspect ratio.**
+
+Allows you to resize an input image to a specific Megapixel target (e.g., 1MP, 2MP) without distorting it. The node automatically calculates the correct width and height to preserve the original shape and rounds dimensions to multiples of 8.
+
+> **Use Case:**  
+> Perfect for Image-to-Image workflows where you want to upscale or downscale a source image to a standard generation size (like 1024x1024 total pixels) but don't want to crop or stretch it.
+
+<details>
+<summary><b>🔻 Click for Parameters & Features</b></summary>
+
+| Parameter | Description |
+| :--- | :--- |
+| **Resolution Select** | Choose the target Megapixel count (0.25MP to 4MP). |
+| **Logic** | Calculates `sqrt(target_pixels / current_pixels)` to scale both dimensions equally. |
+| **Outputs** | Returns the resized **Image**, a matching empty **Latent**, and the new **Width/Height**. |
+
+</details>
+
+---
+
+### 6. ✖️ Multiplication (Dual & Latent)
+**Mathematical scaling for custom upscaling.**
+
+Takes two integer inputs (like Width and Height) and an optional Latent, and multiplies them by a float factor.
+
+> **Use Case:**  
+> Use this for "1.5x Upscales" or "2x Hires Fix". Connect your base width/height, set the multiplier to `1.5`, and feed the output into your latent upscaler or resize node.
+
+<details>
+<summary><b>🔻 Click for Parameters & Features</b></summary>
+
+| Parameter | Description |
+| :--- | :--- |
+| **Multiplier** | The scaling factor (e.g., `1.5` or `2.0`). |
+| **Inputs** | Accepts two Integers (`value_1`, `value_2`) and a `Latent`. |
+| **Outputs** | Returns the multiplied integers and the bilinearly interpolated latent. |
+
+</details>
+
+---
+
+### 7. 🧹 VRAM/RAM Cleaner
+**Manage your resources mid-workflow.**
+
+A "Pass-through" node that can connect to **any** input (Model, VAE, Image, etc.). It passes the data through unchanged but triggers a garbage collection and VRAM flush event when executed.
+
+> **Modes:**  
+> 1. **Current:** Unloads the specific model passing through the node.  
+> 2. **Others:** Unloads everything else, keeping only the passing model in VRAM.  
+> 3. **All:** Unloads everything to system RAM (clean slate).
+
 <br>
 
 ## 🚀 Workflow Examples
@@ -128,6 +182,12 @@ Stop guessing pixel dimensions. This node groups resolutions by Megapixel count 
 2. Set Output Format to `Natural`.
 3. Set Focal Length to `85mm` (Portrait) and Depth to `Close-up`.
 4. Resulting Prompt: *"85.0mm portrait lens with compression, camera very close, close-up"* appended to your main prompt.
+
+### The "Smart Upscaler"
+1. Connect your base `Width` and `Height` to **Multiplication (Dual)**.
+2. Set Multiplier to `1.5`.
+3. Connect the output `Result 1` and `Result 2` to a "Latent Upscale" node.
+4. This dynamically calculates a 1.5x resolution regardless of your starting aspect ratio.
 
 <br>
 

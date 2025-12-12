@@ -87,7 +87,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **DT_DISPLAY,
 }
 
-# Enables frontend JS files located in ./web to be served/loaded by ComfyUI
 WEB_DIRECTORY = "./web"
 
 __all__ = [

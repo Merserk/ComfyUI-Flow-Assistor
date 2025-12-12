@@ -1,5 +1,4 @@
-# Import other nodes. Using try-except blocks to prevent crashes if
-# sibling files are missing during testing/installation.
+# Import other nodes.
 
 try:
     from .camera_angle_control_node import NODE_CLASS_MAPPINGS as CAM_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as CAM_DISPLAY
@@ -36,25 +35,63 @@ try:
 except ImportError:
     CLEAN_CLASSES, CLEAN_DISPLAY = {}, {}
 
+try:
+    from .bypass_node import NODE_CLASS_MAPPINGS as FLOW_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as FLOW_DISPLAY
+except ImportError:
+    FLOW_CLASSES, FLOW_DISPLAY = {}, {}
+
+# Any passthrough nodes
+try:
+    from .any_passthrough_nodes import NODE_CLASS_MAPPINGS as ANYPT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as ANYPT_DISPLAY
+except ImportError:
+    ANYPT_CLASSES, ANYPT_DISPLAY = {}, {}
+
+# Delay node
+try:
+    from .delay_node import NODE_CLASS_MAPPINGS as DELAY_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DELAY_DISPLAY
+except ImportError:
+    DELAY_CLASSES, DELAY_DISPLAY = {}, {}
+
+# NEW: Display text node
+try:
+    from .display_text_node import NODE_CLASS_MAPPINGS as DT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DT_DISPLAY
+except ImportError:
+    DT_CLASSES, DT_DISPLAY = {}, {}
+
 # Combine all mappings
 NODE_CLASS_MAPPINGS = {
-    **CAM_CLASSES, 
-    **QUEUE_CLASSES, 
-    **FOLDER_CLASSES, 
+    **CAM_CLASSES,
+    **QUEUE_CLASSES,
+    **FOLDER_CLASSES,
     **RES_CLASSES,
     **FIT_CLASSES,
     **MULT_CLASSES,
-    **CLEAN_CLASSES
+    **CLEAN_CLASSES,
+    **FLOW_CLASSES,
+    **ANYPT_CLASSES,
+    **DELAY_CLASSES,
+    **DT_CLASSES,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    **CAM_DISPLAY, 
-    **QUEUE_DISPLAY, 
-    **FOLDER_DISPLAY, 
+    **CAM_DISPLAY,
+    **QUEUE_DISPLAY,
+    **FOLDER_DISPLAY,
     **RES_DISPLAY,
     **FIT_DISPLAY,
     **MULT_DISPLAY,
-    **CLEAN_DISPLAY
+    **CLEAN_DISPLAY,
+    **FLOW_DISPLAY,
+    **ANYPT_DISPLAY,
+    **DELAY_DISPLAY,
+    **DT_DISPLAY,
 }
 
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
+# Enables frontend JS files located in ./web to be served/loaded by ComfyUI
+WEB_DIRECTORY = "./web"
+
+__all__ = [
+    "NODE_CLASS_MAPPINGS",
+    "NODE_DISPLAY_NAME_MAPPINGS",
+    "WEB_DIRECTORY",
+]

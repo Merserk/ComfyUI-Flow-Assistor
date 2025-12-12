@@ -166,6 +166,43 @@ A "Pass-through" node that can connect to **any** input (Model, VAE, Image, etc.
 > 2. **Others:** Unloads everything else, keeping only the passing model in VRAM.  
 > 3. **All:** Unloads everything to system RAM (clean slate).
 
+---
+
+### 8. 🎮 Flow Control (Sidecar Bypass)
+**Toggle nodes On/Off remotely.**
+
+A control panel that connects to up to 4 other nodes. This acts as a "Sidecar" — it does not sit in the flow of data, but rather controls the logic of the connected nodes.
+
+> **How it works:**
+> 1. Connect a node (e.g., a KSampler or ControlNet) to an `input` slot.
+> 2. Toggle the switch on this node.
+> 3. **Off (BYPASS):** Forces the connected node into Bypass mode (purple).
+> 4. **Active:** Forces the connected node into Always/Normal mode.
+
+---
+
+### 9. 🔀 Any Passthrough
+**Universal rerouting tools.**
+
+Use these to clean up "spaghetti" wires or create fallback logic. These nodes accept **any** connection type (Model, Image, String, Latent, etc.).
+
+*   **Any Passthrough (6 → 1):** Takes up to 6 inputs. Outputs the **first** one that is not null. Great for fallback defaults.
+*   **Any Passthrough (1 → 6):** Takes 1 input and duplicates it to 6 outputs. Great for organizing wires from a single source.
+
+---
+
+### 10. ⏱️ Add Delay
+**Pause execution for debugging.**
+
+A simple node that connects to any data type, waits for a specified number of seconds, and then passes the data through unchanged. Useful for timing API calls or debugging complex flows.
+
+---
+
+### 11. 📺 Show Text
+**Display text directly on the graph.**
+
+Connect any string output (like the `Prompt Queue` or `Camera Angle Control`) to this node. It will display the text content inside a widget box on the node itself. Useful for verifying what is actually being sent to your CLIP encoder.
+
 <br>
 
 ## 🚀 Workflow Examples

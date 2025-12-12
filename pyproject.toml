@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-flow-assistor"
+description = "Essential utility nodes for ComfyUI (Prompt Queue, Camera Control, Resolution Fit, etc.)"
+version = "1.0.0"
+license = { file = "LICENSE.txt" }
+dependencies = []
+tags = ["utils", "prompt", "camera", "resolution", "workflow"]
+authors = [
+  { name = "Merserk" } 
+]
+
+[tool.comfy]
+PublisherId = "merserk"
+DisplayName = "ComfyUI Flow Assistor"
+Icon = "https://github.com/user-attachments/assets/c9306ce8-96b0-4535-91f7-144f2ac27840"

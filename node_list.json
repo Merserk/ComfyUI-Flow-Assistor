@@ -10,5 +10,6 @@
   "AnyPassthrough6to1": "Any Passthrough (6 → 1)",
   "AnyPassthrough1to6": "Any Passthrough (1 → 6)",
   "AddDelay": "Add Delay",
-  "DisplayText": "Show Text"
+  "DisplayText": "Show Text",
+  "CLIPTextEncodePromptEnrichment": "CLIP Text Encode (Prompt Enrichment)"
 }

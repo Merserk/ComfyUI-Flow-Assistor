@@ -52,11 +52,17 @@ try:
 except ImportError:
     DELAY_CLASSES, DELAY_DISPLAY = {}, {}
 
-# NEW: Display text node
+# Display text node
 try:
     from .display_text_node import NODE_CLASS_MAPPINGS as DT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DT_DISPLAY
 except ImportError:
     DT_CLASSES, DT_DISPLAY = {}, {}
+
+# CLIP Text Enrichment node
+try:
+    from .clip_text_enrichment_node import NODE_CLASS_MAPPINGS as ENRICH_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as ENRICH_DISPLAY
+except ImportError:
+    ENRICH_CLASSES, ENRICH_DISPLAY = {}, {}
 
 # Combine all mappings
 NODE_CLASS_MAPPINGS = {
@@ -71,6 +77,7 @@ NODE_CLASS_MAPPINGS = {
     **ANYPT_CLASSES,
     **DELAY_CLASSES,
     **DT_CLASSES,
+    **ENRICH_CLASSES,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -85,6 +92,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **ANYPT_DISPLAY,
     **DELAY_DISPLAY,
     **DT_DISPLAY,
+    **ENRICH_DISPLAY,
 }
 
 WEB_DIRECTORY = "./web"

@@ -203,6 +203,27 @@ A simple node that connects to any data type, waits for a specified number of se
 
 Connect any string output (like the `Prompt Queue` or `Camera Angle Control`) to this node. It will display the text content inside a widget box on the node itself. Useful for verifying what is actually being sent to your CLIP encoder.
 
+---
+
+### 12. 🎨 CLIP Text Encode (Prompt Enrichment)
+**Standard conditioning with built-in style power.**
+
+Why copy-paste "masterpiece, best quality, 4k..." every time? This node acts exactly like the standard CLIP Text Encode but includes a dropdown with **20 curated style presets**.
+
+> **Use Case:**
+> Quickly test how your prompt looks in "Anime Style" vs "Photographic" without rewriting your text, or use utility presets like "White Background" for assets.
+
+<details>
+<summary><b>🔻 Click for Parameters & Features</b></summary>
+
+| Parameter | Description |
+| :--- | :--- |
+| **Text** | Your main prompt input. |
+| **Preset** | Choose from 20 styles including: *Cinematic, Digital Art, Dark Fantasy, 3D Render, Crisp/Sharp Focus, Huge Scene, White Background, etc.* |
+| **Behavior** | Appends the specific style keywords to the end of your prompt and generates the Conditioning. |
+
+</details>
+
 <br>
 
 ## 🚀 Workflow Examples
@@ -225,6 +246,13 @@ Connect any string output (like the `Prompt Queue` or `Camera Angle Control`) to
 2. Set Multiplier to `1.5`.
 3. Connect the output `Result 1` and `Result 2` to a "Latent Upscale" node.
 4. This dynamically calculates a 1.5x resolution regardless of your starting aspect ratio.
+
+### The "Instant Style Switcher"
+1. Use **CLIP Text Encode (Prompt Enrichment)** instead of the standard node.
+2. Write a simple prompt: *"A cat sitting on a wall"*.
+3. Select Preset: **Cyberpunk**.
+4. Result: It generates *"A cat sitting on a wall, cyberpunk, neon lights, synthwave, futuristic..."*.
+5. Switch Preset to **Line Art** or **White Background** to instantly change the vibe.
 
 <br>
 

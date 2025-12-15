@@ -224,6 +224,40 @@ Why copy-paste "masterpiece, best quality, 4k..." every time? This node acts exa
 
 </details>
 
+---
+
+### 13. 🖱️ Visual Marquee (Interactive)
+**Pause, Select, and Refine.**
+
+A Human-in-the-Loop tool that pauses your workflow and opens a popup editor over your generated image. You can draw a crop box to select a specific area, then resume the workflow to process just that area.
+
+> **How it works:**
+> 1. The node generates a preview and pauses the execution.
+> 2. A popup appears in your browser. Draw a selection box.
+> 3. Click **Confirm**. The workflow resumes, outputting the cropped image, a mask, and tile coordinates.
+
+<details>
+<summary><b>🔻 Click for Parameters & Features</b></summary>
+
+| Parameter | Description |
+| :--- | :--- |
+| **Max Resolution** | If `Original Size` is disabled, the crop will be upscaled/downscaled so the longest side matches this value. |
+| **Original Size** | **True:** Returns the exact pixels you selected. **False:** Resizes the selection to `Max Resolution`. |
+| **Outputs** | `cropped_image`, `mask`, and `tile_data` (required for merging back later). |
+
+</details>
+
+---
+
+### 14. 🧩 Tile Compositor (Merge)
+**Seamlessly paste refined details back.**
+
+The partner node to **Visual Marquee**. After you have processed/upscaled/inpainted your cropped area, this node puts it back into the original full-size image at the exact correct coordinates.
+
+> **Features:**
+> *   **Auto-Scaling:** Automatically handles size differences if you upscaled the crop in the middle of the workflow.
+> *   **Feathering:** Blends the edges of the pasted tile to prevent visible seams.
+
 <br>
 
 ## 🚀 Workflow Examples
@@ -253,6 +287,13 @@ Why copy-paste "masterpiece, best quality, 4k..." every time? This node acts exa
 3. Select Preset: **Cyberpunk**.
 4. Result: It generates *"A cat sitting on a wall, cyberpunk, neon lights, synthwave, futuristic..."*.
 5. Switch Preset to **Line Art** or **White Background** to instantly change the vibe.
+
+### The "Interactive Zoom & Enhance"
+1. Feed an image into **Visual Marquee**.
+2. Run flow. It pauses. Select a face or detail. Click Confirm.
+3. Feed `cropped_image` into a KSampler (Img2Img) or UltimateSDUpscale to add detail.
+4. Feed the Result, the Original Image, and the `tile_data` into **Tile Compositor**.
+5. Result: The original image with a high-res, refined detail pasted back in seamlessly.
 
 <br>
 

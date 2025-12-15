@@ -11,5 +11,8 @@
   "AnyPassthrough1to6": "Any Passthrough (1 → 6)",
   "AddDelay": "Add Delay",
   "DisplayText": "Show Text",
-  "CLIPTextEncodePromptEnrichment": "CLIP Text Encode (Prompt Enrichment)"
+  "CLIPTextEncodePromptEnrichment": "CLIP Text Encode (Prompt Enrichment)",
+  "TileManager": "Tile Manager (Crop)",
+  "TileCompositor": "Tile Compositor (Merge)",
+  "VisualMarqueeSelection": "Visual Marquee (Interactive)"
 }

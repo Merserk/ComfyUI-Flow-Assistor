@@ -40,29 +40,37 @@ try:
 except ImportError:
     FLOW_CLASSES, FLOW_DISPLAY = {}, {}
 
-# Any passthrough nodes
 try:
     from .any_passthrough_nodes import NODE_CLASS_MAPPINGS as ANYPT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as ANYPT_DISPLAY
 except ImportError:
     ANYPT_CLASSES, ANYPT_DISPLAY = {}, {}
 
-# Delay node
 try:
     from .delay_node import NODE_CLASS_MAPPINGS as DELAY_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DELAY_DISPLAY
 except ImportError:
     DELAY_CLASSES, DELAY_DISPLAY = {}, {}
 
-# Display text node
 try:
     from .display_text_node import NODE_CLASS_MAPPINGS as DT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DT_DISPLAY
 except ImportError:
     DT_CLASSES, DT_DISPLAY = {}, {}
 
-# CLIP Text Enrichment node
 try:
     from .clip_text_enrichment_node import NODE_CLASS_MAPPINGS as ENRICH_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as ENRICH_DISPLAY
 except ImportError:
     ENRICH_CLASSES, ENRICH_DISPLAY = {}, {}
+
+# Tile Compositor (and Manager) - NEEDED FOR MERGING
+try:
+    from .tile_manager_nodes import NODE_CLASS_MAPPINGS as TILE_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as TILE_DISPLAY
+except ImportError:
+    TILE_CLASSES, TILE_DISPLAY = {}, {}
+
+# Visual Marquee (Popup/JS based)
+try:
+    from .visual_marquee_node import NODE_CLASS_MAPPINGS as VIS_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as VIS_DISPLAY
+except ImportError:
+    VIS_CLASSES, VIS_DISPLAY = {}, {}
 
 # Combine all mappings
 NODE_CLASS_MAPPINGS = {
@@ -78,6 +86,8 @@ NODE_CLASS_MAPPINGS = {
     **DELAY_CLASSES,
     **DT_CLASSES,
     **ENRICH_CLASSES,
+    **TILE_CLASSES,
+    **VIS_CLASSES,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -93,6 +103,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **DELAY_DISPLAY,
     **DT_DISPLAY,
     **ENRICH_DISPLAY,
+    **TILE_DISPLAY,
+    **VIS_DISPLAY,
 }
 
 WEB_DIRECTORY = "./web"

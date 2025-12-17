@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-flow-assistor"
 description = "Essential utility nodes for ComfyUI (Prompt Queue, Camera Control, Resolution Fit, etc.)"
-version = "1.0.3"
+version = "1.0.4"
 license = { file = "LICENSE.txt" }
 dependencies = []
 tags = ["utils", "prompt", "camera", "resolution", "workflow"]

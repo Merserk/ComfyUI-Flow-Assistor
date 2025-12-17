@@ -135,7 +135,27 @@ Allows you to resize an input image to a specific Megapixel target (e.g., 1MP, 2
 
 ---
 
-### 6. ✖️ Multiplication (Dual & Latent)
+### 6. 📏 Image Resolution Extractor
+**Get dimensions without resizing.**
+
+A utility node that passes an image through unchanged but extracts its width and height. It also creates a matching empty latent.
+
+> **Use Case:**
+> Use this when you want to use an uploaded image as a reference (e.g., for ControlNet) and need an empty latent that matches its exact dimensions.
+
+<details>
+<summary><b>🔻 Click for Parameters & Features</b></summary>
+
+| Parameter | Description |
+| :--- | :--- |
+| **Image** | The input image. |
+| **Outputs** | Returns `Width`, `Height`, a matching `Latent`, and the original `Image`. |
+
+</details>
+
+---
+
+### 7. ✖️ Multiplication (Dual & Latent)
 **Mathematical scaling for custom upscaling.**
 
 Takes two integer inputs (like Width and Height) and an optional Latent, and multiplies them by a float factor.
@@ -156,7 +176,7 @@ Takes two integer inputs (like Width and Height) and an optional Latent, and mul
 
 ---
 
-### 7. 🧹 VRAM/RAM Cleaner
+### 8. 🧹 VRAM/RAM Cleaner
 **Manage your resources mid-workflow.**
 
 A "Pass-through" node that can connect to **any** input (Model, VAE, Image, etc.). It passes the data through unchanged but triggers a garbage collection and VRAM flush event when executed.
@@ -168,7 +188,7 @@ A "Pass-through" node that can connect to **any** input (Model, VAE, Image, etc.
 
 ---
 
-### 8. 🎮 Flow Control (Sidecar Bypass)
+### 9. 🎮 Flow Control (Sidecar Bypass)
 **Toggle nodes On/Off remotely.**
 
 A control panel that connects to up to 4 other nodes. This acts as a "Sidecar" — it does not sit in the flow of data, but rather controls the logic of the connected nodes.
@@ -181,7 +201,7 @@ A control panel that connects to up to 4 other nodes. This acts as a "Sidecar" �
 
 ---
 
-### 9. 🔀 Any Passthrough
+### 10. 🔀 Any Passthrough
 **Universal rerouting tools.**
 
 Use these to clean up "spaghetti" wires or create fallback logic. These nodes accept **any** connection type (Model, Image, String, Latent, etc.).
@@ -191,21 +211,21 @@ Use these to clean up "spaghetti" wires or create fallback logic. These nodes ac
 
 ---
 
-### 10. ⏱️ Add Delay
+### 11. ⏱️ Add Delay
 **Pause execution for debugging.**
 
 A simple node that connects to any data type, waits for a specified number of seconds, and then passes the data through unchanged. Useful for timing API calls or debugging complex flows.
 
 ---
 
-### 11. 📺 Show Text
+### 12. 📺 Show Text
 **Display text directly on the graph.**
 
 Connect any string output (like the `Prompt Queue` or `Camera Angle Control`) to this node. It will display the text content inside a widget box on the node itself. Useful for verifying what is actually being sent to your CLIP encoder.
 
 ---
 
-### 12. 🎨 CLIP Text Encode (Prompt Enrichment)
+### 13. 🎨 CLIP Text Encode (Prompt Enrichment)
 **Standard conditioning with built-in style power.**
 
 Why copy-paste "masterpiece, best quality, 4k..." every time? This node acts exactly like the standard CLIP Text Encode but includes a dropdown with **20 curated style presets**.
@@ -226,7 +246,7 @@ Why copy-paste "masterpiece, best quality, 4k..." every time? This node acts exa
 
 ---
 
-### 13. 🖱️ Visual Marquee (Interactive)
+### 14. 🖱️ Visual Marquee (Interactive)
 **Pause, Select, and Refine.**
 
 A Human-in-the-Loop tool that pauses your workflow and opens a popup editor over your generated image. You can draw a crop box to select a specific area, then resume the workflow to process just that area.
@@ -249,7 +269,7 @@ A Human-in-the-Loop tool that pauses your workflow and opens a popup editor over
 
 ---
 
-### 14. 🧩 Tile Compositor (Merge)
+### 15. 🧩 Tile Compositor (Merge)
 **Seamlessly paste refined details back.**
 
 The partner node to **Visual Marquee**. After you have processed/upscaled/inpainted your cropped area, this node puts it back into the original full-size image at the exact correct coordinates.
@@ -257,6 +277,28 @@ The partner node to **Visual Marquee**. After you have processed/upscaled/inpain
 > **Features:**
 > *   **Auto-Scaling:** Automatically handles size differences if you upscaled the crop in the middle of the workflow.
 > *   **Feathering:** Blends the edges of the pasted tile to prevent visible seams.
+
+---
+
+### 16. 💎 Detail Enhancer
+**Inject texture and crispness.**
+
+A specialized node that manipulates the noise schedule (Sigmas) to force the model to generate more high-frequency detail. It works by "slowing down" the sampling process during the critical detail-formation phase and artificially inflating noise values.
+
+> **Variants:**
+> *   **Detail Enhancer (Sampler):** Wraps a sampler node.
+> *   **Detail Enhancer (Sigmas):** Modifies the Sigmas connection directly.
+
+<details>
+<summary><b>🔻 Click for Parameters & Features</b></summary>
+
+| Parameter | Description |
+| :--- | :--- |
+| **Enhance Factor** | Time Dilation. Slows down sampling in the active zone (e.g., `2.0` = 2x steps in zone). Adds structural detail. |
+| **Texture Boost** | Sigma Inflation. Increases noise values (e.g., `0.5`). Adds sharp, gritty texture. |
+| **Start / End %** | The range of the generation where the effect applies (Default `0.1` to `0.8`). |
+
+</details>
 
 <br>
 

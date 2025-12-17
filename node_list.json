@@ -4,6 +4,7 @@
   "CameraAngleControl": "Camera Angle Control",
   "ResolutionSelectNode": "Resolution Selector (Groups)",
   "ImageResolutionFitNode": "Image Resolution Fit",
+  "ImageResolutionExtractorNode": "Image Resolution Extractor",
   "MultiplicationNode": "Multiplication (Dual & Latent)",
   "VRAMRAMCleanerNode": "VRAM/RAM Cleaner",
   "BypassControl": "Flow Control (Sidecar Bypass)",
@@ -14,5 +15,7 @@
   "CLIPTextEncodePromptEnrichment": "CLIP Text Encode (Prompt Enrichment)",
   "TileManager": "Tile Manager (Crop)",
   "TileCompositor": "Tile Compositor (Merge)",
-  "VisualMarqueeSelection": "Visual Marquee (Interactive)"
+  "VisualMarqueeSelection": "Visual Marquee (Interactive)",
+  "DetailEnhanceSamplerNode": "Detail Enhancer (Sampler)",
+  "DetailEnhanceSigmasNode": "Detail Enhancer (Sigmas)"
 }

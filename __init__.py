@@ -26,6 +26,11 @@ except ImportError:
     FIT_CLASSES, FIT_DISPLAY = {}, {}
 
 try:
+    from .image_resolution_extractor_node import NODE_CLASS_MAPPINGS as EXTRACT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as EXTRACT_DISPLAY
+except ImportError:
+    EXTRACT_CLASSES, EXTRACT_DISPLAY = {}, {}
+
+try:
     from .multiplication_node import NODE_CLASS_MAPPINGS as MULT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as MULT_DISPLAY
 except ImportError:
     MULT_CLASSES, MULT_DISPLAY = {}, {}
@@ -72,6 +77,12 @@ try:
 except ImportError:
     VIS_CLASSES, VIS_DISPLAY = {}, {}
 
+# Detail Enhancer (Separated)
+try:
+    from .detail_enhance_node import NODE_CLASS_MAPPINGS as DETAIL_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DETAIL_DISPLAY
+except ImportError:
+    DETAIL_CLASSES, DETAIL_DISPLAY = {}, {}
+
 # Combine all mappings
 NODE_CLASS_MAPPINGS = {
     **CAM_CLASSES,
@@ -79,6 +90,7 @@ NODE_CLASS_MAPPINGS = {
     **FOLDER_CLASSES,
     **RES_CLASSES,
     **FIT_CLASSES,
+    **EXTRACT_CLASSES,
     **MULT_CLASSES,
     **CLEAN_CLASSES,
     **FLOW_CLASSES,
@@ -88,6 +100,7 @@ NODE_CLASS_MAPPINGS = {
     **ENRICH_CLASSES,
     **TILE_CLASSES,
     **VIS_CLASSES,
+    **DETAIL_CLASSES,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -96,6 +109,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **FOLDER_DISPLAY,
     **RES_DISPLAY,
     **FIT_DISPLAY,
+    **EXTRACT_DISPLAY,
     **MULT_DISPLAY,
     **CLEAN_DISPLAY,
     **FLOW_DISPLAY,
@@ -105,6 +119,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **ENRICH_DISPLAY,
     **TILE_DISPLAY,
     **VIS_DISPLAY,
+    **DETAIL_DISPLAY,
 }
 
 WEB_DIRECTORY = "./web"

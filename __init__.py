@@ -65,7 +65,7 @@ try:
 except ImportError:
     ENRICH_CLASSES, ENRICH_DISPLAY = {}, {}
 
-# Tile Compositor (and Manager) - NEEDED FOR MERGING
+# Tile Compositor (and Manager)
 try:
     from .tile_manager_nodes import NODE_CLASS_MAPPINGS as TILE_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as TILE_DISPLAY
 except ImportError:
@@ -77,11 +77,17 @@ try:
 except ImportError:
     VIS_CLASSES, VIS_DISPLAY = {}, {}
 
-# Detail Enhancer (Separated)
+# Detail Enhancer
 try:
     from .detail_enhance_node import NODE_CLASS_MAPPINGS as DETAIL_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DETAIL_DISPLAY
 except ImportError:
     DETAIL_CLASSES, DETAIL_DISPLAY = {}, {}
+
+# LoRA Online Loader
+try:
+    from .lora_online_node import NODE_CLASS_MAPPINGS as LORA_ONLINE_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as LORA_ONLINE_DISPLAY
+except ImportError:
+    LORA_ONLINE_CLASSES, LORA_ONLINE_DISPLAY = {}, {}
 
 # Combine all mappings
 NODE_CLASS_MAPPINGS = {
@@ -101,6 +107,7 @@ NODE_CLASS_MAPPINGS = {
     **TILE_CLASSES,
     **VIS_CLASSES,
     **DETAIL_CLASSES,
+    **LORA_ONLINE_CLASSES,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -120,6 +127,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **TILE_DISPLAY,
     **VIS_DISPLAY,
     **DETAIL_DISPLAY,
+    **LORA_ONLINE_DISPLAY,
 }
 
 WEB_DIRECTORY = "./web"

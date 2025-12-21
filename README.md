@@ -300,6 +300,28 @@ A specialized node that manipulates the noise schedule (Sigmas) to force the mod
 
 </details>
 
+---
+
+### 17. ☁️ LoRA Online
+**Use LoRAs directly from URLs.**
+
+Skip the manual download process. Paste a link from Civitai, Tensor.art, or HuggingFace, and this node will download the LoRA, load it into your model, and optionally delete it after generation to save disk space.
+
+> **Smart Integration:**
+> You don't need to hunt for the direct file link. Just paste the **Civitai Model Page URL** (e.g., `https://civitai.com/models/12345/...`), and the node will automatically query the API to find the correct download file.
+
+<details>
+<summary><b>🔻 Click for Parameters & Features</b></summary>
+
+| Parameter | Description |
+| :--- | :--- |
+| **URL** | The link to the LoRA (Direct link or Civitai Model Page). |
+| **Strength** | Standard LoRA strength control. |
+| **Save to Disk** | **True:** Keeps the file forever. **False:** Downloads, generates, then **deletes** the file to free up space. |
+| **Open Folder** | A button to instantly open the download directory (`models/loras/Flow-Assistor-LoRA`) in your OS file explorer. |
+
+</details>
+
 <br>
 
 ## 🚀 Workflow Examples

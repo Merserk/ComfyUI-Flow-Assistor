@@ -17,5 +17,6 @@
   "TileCompositor": "Tile Compositor (Merge)",
   "VisualMarqueeSelection": "Visual Marquee (Interactive)",
   "DetailEnhanceSamplerNode": "Detail Enhancer (Sampler)",
-  "DetailEnhanceSigmasNode": "Detail Enhancer (Sigmas)"
+  "DetailEnhanceSigmasNode": "Detail Enhancer (Sigmas)",
+  "LoRAOnlineNode": "LoRA Online Node"
 }

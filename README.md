@@ -155,7 +155,17 @@ A utility node that passes an image through unchanged but extracts its width and
 
 ---
 
-### 7. ✖️ Multiplication (Dual & Latent)
+### 7. 📏 Image Latent Resolution Extractor
+**Get pixel dimensions from a Latent.**
+
+Standard Stable Diffusion latents are compressed (1/8th scale). This node reads the latent dimensions and multiplies them by 8 to give you the effective pixel width and height.
+
+> **Use Case:**
+> Useful when you have a latent and need to know its target pixel size for downstream resizing or conditionings, without decoding it first.
+
+---
+
+### 8. ✖️ Multiplication (Dual & Latent)
 **Mathematical scaling for custom upscaling.**
 
 Takes two integer inputs (like Width and Height) and an optional Latent, and multiplies them by a float factor.
@@ -176,7 +186,7 @@ Takes two integer inputs (like Width and Height) and an optional Latent, and mul
 
 ---
 
-### 8. 🧹 VRAM/RAM Cleaner
+### 9. 🧹 VRAM/RAM Cleaner
 **Manage your resources mid-workflow.**
 
 A "Pass-through" node that can connect to **any** input (Model, VAE, Image, etc.). It passes the data through unchanged but triggers a garbage collection and VRAM flush event when executed.
@@ -188,7 +198,7 @@ A "Pass-through" node that can connect to **any** input (Model, VAE, Image, etc.
 
 ---
 
-### 9. 🎮 Flow Control (Sidecar Bypass)
+### 10. 🎮 Flow Control (Sidecar Bypass)
 **Toggle nodes On/Off remotely.**
 
 A control panel that connects to up to 4 other nodes. This acts as a "Sidecar" — it does not sit in the flow of data, but rather controls the logic of the connected nodes.
@@ -201,7 +211,7 @@ A control panel that connects to up to 4 other nodes. This acts as a "Sidecar" �
 
 ---
 
-### 10. 🔀 Any Passthrough
+### 11. 🔀 Any Passthrough
 **Universal rerouting tools.**
 
 Use these to clean up "spaghetti" wires or create fallback logic. These nodes accept **any** connection type (Model, Image, String, Latent, etc.).
@@ -211,21 +221,34 @@ Use these to clean up "spaghetti" wires or create fallback logic. These nodes ac
 
 ---
 
-### 11. ⏱️ Add Delay
+### 12. ⏱️ Add Delay
 **Pause execution for debugging.**
 
 A simple node that connects to any data type, waits for a specified number of seconds, and then passes the data through unchanged. Useful for timing API calls or debugging complex flows.
 
 ---
 
-### 12. 📺 Show Text
+### 13. 🐞 Debug Data (Any Input)
+**Inspect your data connections.**
+
+Not sure what shape a tensor is? Want to check the exact resolution of a latent? Connect **ANY** output to this node. It analyzes the data and displays a summary directly on the node.
+
+> **Features:**
+> *   **Images:** Displays Resolution, Aspect Ratio, Batch Size, and Channels.
+> *   **Latents:** Displays Latent Shape and equivalent Pixel Resolution (8x).
+> *   **General:** Displays Type, Tensor Shape, Dtype, and Device.
+> *   **On-Graph Display:** Shows the data in a read-only "Matrix green" text box directly on the node itself.
+
+---
+
+### 14. 📺 Show Text
 **Display text directly on the graph.**
 
 Connect any string output (like the `Prompt Queue` or `Camera Angle Control`) to this node. It will display the text content inside a widget box on the node itself. Useful for verifying what is actually being sent to your CLIP encoder.
 
 ---
 
-### 13. 🎨 CLIP Text Encode (Prompt Enrichment)
+### 15. 🎨 CLIP Text Encode (Prompt Enrichment)
 **Standard conditioning with built-in style power.**
 
 Why copy-paste "masterpiece, best quality, 4k..." every time? This node acts exactly like the standard CLIP Text Encode but includes a dropdown with **20 curated style presets**.
@@ -246,7 +269,7 @@ Why copy-paste "masterpiece, best quality, 4k..." every time? This node acts exa
 
 ---
 
-### 14. 🖱️ Visual Marquee (Interactive)
+### 16. 🖱️ Visual Marquee (Interactive)
 **Pause, Select, and Refine.**
 
 A Human-in-the-Loop tool that pauses your workflow and opens a popup editor over your generated image. You can draw a crop box to select a specific area, then resume the workflow to process just that area.
@@ -269,7 +292,7 @@ A Human-in-the-Loop tool that pauses your workflow and opens a popup editor over
 
 ---
 
-### 15. 🧩 Tile Compositor (Merge)
+### 17. 🧩 Tile Compositor (Merge)
 **Seamlessly paste refined details back.**
 
 The partner node to **Visual Marquee**. After you have processed/upscaled/inpainted your cropped area, this node puts it back into the original full-size image at the exact correct coordinates.
@@ -280,7 +303,7 @@ The partner node to **Visual Marquee**. After you have processed/upscaled/inpain
 
 ---
 
-### 16. 💎 Detail Enhancer
+### 18. 💎 Detail Enhancer
 **Inject texture and crispness.**
 
 A specialized node that manipulates the noise schedule (Sigmas) to force the model to generate more high-frequency detail. It works by "slowing down" the sampling process during the critical detail-formation phase and artificially inflating noise values.
@@ -302,7 +325,7 @@ A specialized node that manipulates the noise schedule (Sigmas) to force the mod
 
 ---
 
-### 17. ☁️ LoRA Online
+### 19. ☁️ LoRA Online
 **Use LoRAs directly from URLs.**
 
 Skip the manual download process. Paste a link from Civitai, Tensor.art, or HuggingFace, and this node will download the LoRA, load it into your model, and optionally delete it after generation to save disk space.
@@ -358,6 +381,11 @@ Skip the manual download process. Paste a link from Civitai, Tensor.art, or Hugg
 3. Feed `cropped_image` into a KSampler (Img2Img) or UltimateSDUpscale to add detail.
 4. Feed the Result, the Original Image, and the `tile_data` into **Tile Compositor**.
 5. Result: The original image with a high-res, refined detail pasted back in seamlessly.
+
+### The "Debugger"
+1. Not sure if your latent is the right size?
+2. Connect your Latent to the **Debug Data** node.
+3. It instantly shows: `Latent Size: 128x128` and `Pixel Res: 1024x1024` right on the graph.
 
 <br>
 

@@ -31,6 +31,11 @@ except ImportError:
     EXTRACT_CLASSES, EXTRACT_DISPLAY = {}, {}
 
 try:
+    from .image_latent_resolution_extractor_node import NODE_CLASS_MAPPINGS as LAT_EXT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as LAT_EXT_DISPLAY
+except ImportError:
+    LAT_EXT_CLASSES, LAT_EXT_DISPLAY = {}, {}
+
+try:
     from .multiplication_node import NODE_CLASS_MAPPINGS as MULT_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as MULT_DISPLAY
 except ImportError:
     MULT_CLASSES, MULT_DISPLAY = {}, {}
@@ -50,6 +55,12 @@ try:
 except ImportError:
     ANYPT_CLASSES, ANYPT_DISPLAY = {}, {}
 
+# New Debug Node
+try:
+    from .output_any_debug_data_node import NODE_CLASS_MAPPINGS as DEBUG_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DEBUG_DISPLAY
+except ImportError:
+    DEBUG_CLASSES, DEBUG_DISPLAY = {}, {}
+
 try:
     from .delay_node import NODE_CLASS_MAPPINGS as DELAY_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DELAY_DISPLAY
 except ImportError:
@@ -65,25 +76,21 @@ try:
 except ImportError:
     ENRICH_CLASSES, ENRICH_DISPLAY = {}, {}
 
-# Tile Compositor (and Manager)
 try:
     from .tile_manager_nodes import NODE_CLASS_MAPPINGS as TILE_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as TILE_DISPLAY
 except ImportError:
     TILE_CLASSES, TILE_DISPLAY = {}, {}
 
-# Visual Marquee (Popup/JS based)
 try:
     from .visual_marquee_node import NODE_CLASS_MAPPINGS as VIS_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as VIS_DISPLAY
 except ImportError:
     VIS_CLASSES, VIS_DISPLAY = {}, {}
 
-# Detail Enhancer
 try:
     from .detail_enhance_node import NODE_CLASS_MAPPINGS as DETAIL_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as DETAIL_DISPLAY
 except ImportError:
     DETAIL_CLASSES, DETAIL_DISPLAY = {}, {}
 
-# LoRA Online Loader
 try:
     from .lora_online_node import NODE_CLASS_MAPPINGS as LORA_ONLINE_CLASSES, NODE_DISPLAY_NAME_MAPPINGS as LORA_ONLINE_DISPLAY
 except ImportError:
@@ -97,10 +104,12 @@ NODE_CLASS_MAPPINGS = {
     **RES_CLASSES,
     **FIT_CLASSES,
     **EXTRACT_CLASSES,
+    **LAT_EXT_CLASSES,
     **MULT_CLASSES,
     **CLEAN_CLASSES,
     **FLOW_CLASSES,
     **ANYPT_CLASSES,
+    **DEBUG_CLASSES,
     **DELAY_CLASSES,
     **DT_CLASSES,
     **ENRICH_CLASSES,
@@ -117,10 +126,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **RES_DISPLAY,
     **FIT_DISPLAY,
     **EXTRACT_DISPLAY,
+    **LAT_EXT_DISPLAY,
     **MULT_DISPLAY,
     **CLEAN_DISPLAY,
     **FLOW_DISPLAY,
     **ANYPT_DISPLAY,
+    **DEBUG_DISPLAY,
     **DELAY_DISPLAY,
     **DT_DISPLAY,
     **ENRICH_DISPLAY,

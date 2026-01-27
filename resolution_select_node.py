@@ -40,8 +40,7 @@ class ResolutionSelectNode:
 
         return {
             "required": {
-                "batch_size": ("INT", {"default": 1, "min": 1, "max": 64}),
-                
+
                 # We swap the order here:
                 # 1. Dropdown
                 # 2. Boolean Switch (using custom labels to indicate it controls the above)
@@ -69,6 +68,7 @@ class ResolutionSelectNode:
                 # --- 4MP ---
                 "res_4mp": (res_4, {"default": "2048x2048 (1:1)"}),
                 "use_4mp": ("BOOLEAN", {"default": False, "label_on": "Active (4MP)", "label_off": "Inactive"}),
+                "batch_size": ("INT", {"default": 1, "min": 1, "max": 64}),
             },
         }
 

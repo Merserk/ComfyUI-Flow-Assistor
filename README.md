@@ -99,7 +99,7 @@ Generating specific camera angles in Stable Diffusion can be hit-or-miss. This n
 Stop guessing pixel dimensions. This node groups resolutions by Megapixel count (0.25MP to 4MP) and provides standard aspect ratios (1:1, 16:9, 4:3, 21:9, etc.).
 
 > **Logic:**  
-> Select a resolution from the dropdown, then **Enable** the switch for that group. The node prioritizes the highest enabled quality group (e.g., if both 1MP and 4MP are enabled, it uses 4MP).
+> Select a resolution from the dropdown, then **Enable** the switch for that group. The switches are mutually exclusive—enabling one automatically disables the others, ensuring only one resolution group is active at a time.
 
 <details>
 <summary><b>🔻 Click for Available Resolutions</b></summary>

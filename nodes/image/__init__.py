@@ -1,5 +1,6 @@
-"""Image, latent-resolution, tiling, and interactive selection nodes."""
+"""Image analysis, resolution, tiling, and interactive selection nodes."""
 
+from .caption_creator import CaptionCreator
 from .latent_resolution_extractor import ImageLatentResolutionExtractorNode
 from .resolution_extractor import ImageResolutionExtractorNode
 from .resolution_fit import ImageResolutionFitNode
@@ -8,6 +9,7 @@ from .tiling import TileCompositor, TileManager
 from .visual_marquee import VisualMarqueeSelection
 
 NODE_CLASSES = (
+    CaptionCreator,
     ResolutionSelectNode,
     ImageResolutionFitNode,
     ImageResolutionExtractorNode,
@@ -18,6 +20,7 @@ NODE_CLASSES = (
 )
 
 __all__ = [
+    "CaptionCreator",
     "ResolutionSelectNode",
     "ImageResolutionFitNode",
     "ImageResolutionExtractorNode",

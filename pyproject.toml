@@ -1,11 +1,11 @@
 [project]
 name = "comfyui-flow-assistor"
-description = "V3-native flow, debugging, precision, prompt, camera, resolution, and workflow utility nodes for ComfyUI"
-version = "2.0.0"
+description = "V3-native flow, captioning, debugging, precision, prompt, camera, resolution, and workflow utility nodes for ComfyUI"
+version = "2.1.0"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dependencies = []
-tags = ["v3", "flow", "text", "image", "loaders", "sampling", "diagnostics", "utils"]
+tags = ["v3", "flow", "captioning", "text", "image", "loaders", "sampling", "diagnostics", "utils"]
 authors = [
   { name = "Merserk" }
 ]

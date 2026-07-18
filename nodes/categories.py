@@ -4,6 +4,7 @@ ROOT = "flow-assistor"
 FLOW = f"{ROOT}/flow"
 TEXT = f"{ROOT}/text"
 IMAGE = f"{ROOT}/image"
+IMAGE_CAPTION = f"{IMAGE}/caption"
 LOADERS = f"{ROOT}/loaders"
 SAMPLING = f"{ROOT}/sampling"
 DIAGNOSTICS = f"{ROOT}/diagnostics"
@@ -13,6 +14,7 @@ ALL_CATEGORIES = frozenset({
     FLOW,
     TEXT,
     IMAGE,
+    IMAGE_CAPTION,
     LOADERS,
     SAMPLING,
     DIAGNOSTICS,
@@ -24,6 +26,7 @@ __all__ = [
     "FLOW",
     "TEXT",
     "IMAGE",
+    "IMAGE_CAPTION",
     "LOADERS",
     "SAMPLING",
     "DIAGNOSTICS",

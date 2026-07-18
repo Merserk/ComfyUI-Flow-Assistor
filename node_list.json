@@ -9,6 +9,7 @@
   "UltimateDetailSamplerNode": "Detail Enhancer (Ultimate)",
   "UltimateDetailSigmasNode": "Detail Enhancer (Sigmas)",
   "DisplayText": "Show Text",
+  "CaptionCreator": "Caption Creator",
   "ImageLatentResolutionExtractorNode": "Image Latent Resolution Extractor",
   "ImageResolutionExtractorNode": "Image Resolution Extractor",
   "ImageResolutionFitNode": "Image Resolution Fit",

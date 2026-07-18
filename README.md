@@ -24,15 +24,16 @@
 
 3. Restart ComfyUI.
 
-> **Requirements:** Python 3.10+ and a current ComfyUI build with the V3 node API (`comfy_api.latest`). Version `2.0.0` is V3-only.
+> **Requirements:** Python 3.10+ and a current ComfyUI build with the V3 node API (`comfy_api.latest`). Caption Creator additionally requires native `CLIPType.KREA2` and Qwen3-VL ConvRot support. Version `2.1.0` is V3-only.
 
-All 25 nodes are organized under:
+All 26 nodes are organized under:
 
 ```text
 flow-assistor/
 ├── diagnostics/
 ├── flow/
 ├── image/
+│   └── caption/
 ├── loaders/
 ├── sampling/
 ├── text/
@@ -78,14 +79,29 @@ Useful for checking prompt queues, generated camera descriptions, filenames, and
 
 ---
 
-### 6. 📐 Resolution Selector (Groups)
+### 6. ✍️ Caption Creator
+**Generate detailed captions from images with a local Qwen3-VL model.**
+
+Accepts one image or an image batch and returns one precise caption per image, separated by newlines. Choose the `int8` or `int4` ConvRot model and set an approximate caption length from 1–300 words; `words = 0` requests an unrestricted detailed sentence.
+
+Missing models can be downloaded automatically and are stored in:
+
+```text
+ComfyUI/models/text_encoders/flow-assistor/
+```
+
+Disable `auto_download` to manage the model files manually. Caption Creator checks for ComfyUI's native `CLIPType.KREA2` support and reports a clear upgrade error when the installed text-encoder loader is too old for the selected format.
+
+---
+
+### 7. 📐 Resolution Selector (Groups)
 **Choose standard dimensions by megapixel group.**
 
 Includes common aspect ratios from `0.25MP` through `4MP`, returns width, height, and an empty latent, and supports batch sizes up to 64.
 
 ---
 
-### 7. 🖼️ Image Resolution Tools
+### 8. 🖼️ Image Resolution Tools
 **Inspect or fit image and latent dimensions.**
 
 - **Image Resolution Fit** — Resizes an image toward a selected megapixel target while preserving aspect ratio.
@@ -94,14 +110,14 @@ Includes common aspect ratios from `0.25MP` through `4MP`, returns width, height
 
 ---
 
-### 8. 🖱️ Visual Marquee (Interactive)
+### 9. 🖱️ Visual Marquee (Interactive)
 **Pause, select, and process one image region.**
 
 Opens an interactive crop selector in the browser and returns the cropped image, mask, and shared `TILE_DATA` metadata. Crops can remain at original size or be resized to a chosen maximum resolution.
 
 ---
 
-### 9. 🧩 Tile Tools
+### 10. 🧩 Tile Tools
 **Support crop-and-merge workflows.**
 
 - **Tile Manager (Crop)** — Preserves the current image, mask, and `TILE_DATA` workflow contract.
@@ -109,14 +125,14 @@ Opens an interactive crop selector in the browser and returns the cropped image,
 
 ---
 
-### 10. ☁️ LoRA Online
+### 11. ☁️ LoRA Online
 **Load a LoRA directly from a URL.**
 
 Accepts direct file links or Civitai model URLs, downloads asynchronously, applies the LoRA to the model, and can either keep the file or delete it after loading.
 
 ---
 
-### 11. 💎 Detail Enhancer
+### 12. 💎 Detail Enhancer
 **Adjust sampling to emphasize fine detail.**
 
 - **Detail Enhancer (Ultimate)** — Wraps a sampler.
@@ -126,7 +142,7 @@ Both provide enhancement strength, texture boost, and start/end percentage contr
 
 ---
 
-### 12. 🔀 Any Passthrough
+### 13. 🔀 Any Passthrough
 **Universal rerouting helpers.**
 
 - **Any Passthrough (6 → 1)** — Returns the first connected non-null input.
@@ -134,42 +150,42 @@ Both provide enhancement strength, texture boost, and start/end percentage contr
 
 ---
 
-### 13. 🎮 Flow Control (Sidecar Bypass)
+### 14. 🎮 Flow Control (Sidecar Bypass)
 **Control connected nodes without placing the controller in the data path.**
 
 Use the frontend switches to change connected nodes between normal execution and bypass mode.
 
 ---
 
-### 14. ⏱️ Add Delay
+### 15. ⏱️ Add Delay
 **Wait before passing data onward.**
 
 Adds an asynchronous delay while preserving the connected data type. Useful for timing, interactive workflows, and debugging.
 
 ---
 
-### 15. 🧹 VRAM/RAM Cleaner
+### 16. 🧹 VRAM/RAM Cleaner
 **Run memory cleanup during a workflow.**
 
 Passes the connected object through unchanged and provides three modes: clean the current object, unload other models, or unload everything.
 
 ---
 
-### 16. ✖️ Multiplication (Dual & Latent)
+### 17. ✖️ Multiplication (Dual & Latent)
 **Scale dimensions and optional latent data.**
 
 Multiplies two integer inputs by a shared factor and resizes an optional latent with the same multiplier.
 
 ---
 
-### 17. 🐞 Debug Data (Any Input)
+### 18. 🐞 Debug Data (Any Input)
 **Inspect almost any connected value.**
 
 Outputs readable information such as Python type, tensor shape, dtype, device, image resolution, batch size, and latent pixel resolution.
 
 ---
 
-### 18. 🔬 Precision Detectors
+### 19. 🔬 Precision Detectors
 **Inspect active model precision at runtime.**
 
 - **Detect Model Precision**

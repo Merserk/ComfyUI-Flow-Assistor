@@ -24,7 +24,7 @@
 
 3. Restart ComfyUI.
 
-> **Requirements:** Python 3.10+ and a current ComfyUI build with the V3 node API (`comfy_api.latest`). Caption Creator additionally requires native `CLIPType.KREA2` and Qwen3-VL ConvRot support. Version `2.1.0` is V3-only.
+> **Requirements:** Python 3.10+ and a current ComfyUI build with the V3 node API (`comfy_api.latest`). Caption Creator additionally requires native `CLIPType.KREA2` and Qwen3-VL ConvRot support. Version `2.2.0` is V3-only.
 
 All 26 nodes are organized under:
 
@@ -82,7 +82,7 @@ Useful for checking prompt queues, generated camera descriptions, filenames, and
 ### 6. ✍️ Caption Creator
 **Generate detailed captions from images with a local Qwen3-VL model.**
 
-Accepts one image or an image batch and returns one precise caption per image, separated by newlines. Choose the `int8` or `int4` ConvRot model and set an approximate caption length from 1–300 words; `words = 0` requests an unrestricted detailed sentence.
+Accepts one image or an image batch and returns one precise caption per image, separated by newlines. Choose the `int8` or `int4` ConvRot model and set an approximate caption length from 1–200 words; `words = 0` requests an unrestricted detailed caption. The selected word count is a target, not a cutoff: generation ends naturally after a complete sentence.
 
 Missing models can be downloaded automatically and are stored in:
 
@@ -90,7 +90,7 @@ Missing models can be downloaded automatically and are stored in:
 ComfyUI/models/text_encoders/flow-assistor/
 ```
 
-Disable `auto_download` to manage the model files manually. Caption Creator checks for ComfyUI's native `CLIPType.KREA2` support and reports a clear upgrade error when the installed text-encoder loader is too old for the selected format.
+Disable `auto_download` to manage the model files manually. Caption Creator checks for ComfyUI's native `CLIPType.KREA2` support and reports a clear upgrade error when the installed text-encoder loader is too old for the selected format. It uses conservative sampling and one automatic retry to recover from repeated or unfinished output, reduces oversized caption inputs internally for faster vision processing, reports the ComfyUI-selected execution device in the console, and shows the latest result in a scrollable preview inside the node.
 
 ---
 

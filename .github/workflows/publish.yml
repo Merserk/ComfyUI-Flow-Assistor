@@ -7,6 +7,7 @@ on:
     paths:
       - "pyproject.toml"
 
+
 jobs:
   publish:
     runs-on: ubuntu-latest

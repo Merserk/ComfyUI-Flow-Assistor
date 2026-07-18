@@ -1,12 +1,13 @@
 [project]
 name = "comfyui-flow-assistor"
-description = "Essential utility nodes for ComfyUI (Prompt Queue, Camera Control, Resolution Fit, etc.)"
-version = "1.0.7"
-license = { file = "LICENSE.txt" }
+description = "V3-native flow, debugging, precision, prompt, camera, resolution, and workflow utility nodes for ComfyUI"
+version = "2.0.0"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
 dependencies = []
-tags = ["utils", "prompt", "camera", "resolution", "workflow"]
+tags = ["v3", "flow", "text", "image", "loaders", "sampling", "diagnostics", "utils"]
 authors = [
-  { name = "Merserk" } 
+  { name = "Merserk" }
 ]
 
 [project.urls]

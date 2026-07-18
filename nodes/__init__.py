@@ -1,0 +1,21 @@
+"""Organized Flow Assistor node registry."""
+
+from .diagnostics import NODE_CLASSES as DIAGNOSTIC_NODE_CLASSES
+from .flow import NODE_CLASSES as FLOW_NODE_CLASSES
+from .image import NODE_CLASSES as IMAGE_NODE_CLASSES
+from .loaders import NODE_CLASSES as LOADER_NODE_CLASSES
+from .sampling import NODE_CLASSES as SAMPLING_NODE_CLASSES
+from .text import NODE_CLASSES as TEXT_NODE_CLASSES
+from .utils import NODE_CLASSES as UTILITY_NODE_CLASSES
+
+NODE_CLASSES = (
+    *FLOW_NODE_CLASSES,
+    *TEXT_NODE_CLASSES,
+    *IMAGE_NODE_CLASSES,
+    *LOADER_NODE_CLASSES,
+    *SAMPLING_NODE_CLASSES,
+    *DIAGNOSTIC_NODE_CLASSES,
+    *UTILITY_NODE_CLASSES,
+)
+
+__all__ = ["NODE_CLASSES"]

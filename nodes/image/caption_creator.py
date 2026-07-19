@@ -40,7 +40,7 @@ _MODEL_SPECS = {
 }
 _MODEL_SUBFOLDER = "flow-assistor"
 _DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024
-_DOWNLOAD_HEADERS = {"User-Agent": "ComfyUI-Flow-Assistor/2.4 Caption-Creator"}
+_DOWNLOAD_HEADERS = {"User-Agent": "ComfyUI-Flow-Assistor/2.4.1 Caption-Creator"}
 
 # This is only an emergency guard against a model that never emits its stop
 # token. It is intentionally fixed and independent of the requested word count.
@@ -48,18 +48,18 @@ _GENERATION_TOKEN_CEILING = 512
 _CAPTION_MAX_EDGE = 784
 _VISION_ALIGNMENT = 28  # Qwen patch_size (14) * merge_size (2).
 
-# Moderate deterministic sampling avoids both near-greedy repetition loops and
-# the aggressive token suppression that can push a quantized model into unusual
-# meta-text. The fixed seed keeps identical inputs reproducible.
+# Qwen3-VL Instruct-style sampling. These conservative defaults avoid the
+# broad token distribution that caused numeric and short-token loops in v2.4.
+# The fixed seed keeps identical inputs reproducible.
 _GENERATION_OPTIONS = {
     "do_sample": True,
     "temperature": 0.70,
-    "top_k": 64,
-    "top_p": 0.95,
-    "min_p": 0.05,
-    "repetition_penalty": 1.05,
+    "top_k": 20,
+    "top_p": 0.80,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
     "presence_penalty": 0.0,
-    "seed": 42,
+    "seed": 0,
 }
 
 _API = ComfyAPI()
@@ -345,14 +345,12 @@ def _build_prompt(words: int) -> str:
     words = _normalize_words(words)
     if words == 0:
         return (
-            "You are a precise image captioner. Describe only what is clearly visible "
-            "in one concise plain English paragraph. Do not include reasoning, notes, "
-            "labels, markdown, speculation, or comments about the task. Output only the caption."
+            "Describe this image in one concise plain English paragraph. "
+            "State only clearly visible details. Output only the caption."
         )
     return (
-        "You are a precise image captioner. Describe only what is clearly visible "
-        f"in one plain English paragraph of about {words} words. Do not include reasoning, "
-        "notes, labels, markdown, speculation, or comments about the task. Output only the caption."
+        f"Describe this image in about {words} words. Use one plain English paragraph. "
+        "State only clearly visible details. Output only the caption."
     )
 
 
@@ -757,7 +755,7 @@ class CaptionCreator(io.ComfyNode):
             for index in range(int(caption_batch.shape[0]))
         ]
         text = "\n".join(captions)
-        return io.NodeOutput(text, ui={"text": text})
+        return io.NodeOutput(text, ui={"captions": captions})
 
 
 __all__ = [

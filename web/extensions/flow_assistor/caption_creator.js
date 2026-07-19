@@ -1,26 +1,43 @@
 import { app } from "/scripts/app.js";
 
 const PREVIEW_PROPERTY = "caption_creator_preview";
+const EMPTY_PREVIEW = "Caption preview appears here after execution.";
 
-function normalizePayload(payload) {
-  let values = payload;
-  if (values == null) return [];
-  if (!Array.isArray(values)) values = [values];
-
-  const flattened = [];
-  for (const value of values) {
-    if (Array.isArray(value)) {
-      flattened.push(...value.map((item) => String(item ?? "")));
-    } else {
-      flattened.push(String(value ?? ""));
-    }
-  }
-  return flattened.filter((value) => value.length > 0);
+function asCaption(value) {
+  return String(value ?? "");
 }
 
-function formatPreview(payload) {
-  const captions = normalizePayload(payload);
-  if (captions.length <= 1) return captions[0] ?? "Caption preview appears here after execution.";
+function normalizeCaptions(payload) {
+  if (payload == null) return [];
+  if (Array.isArray(payload)) return payload.map(asCaption);
+  return [asCaption(payload)];
+}
+
+function normalizeLegacyText(payload) {
+  if (payload == null) return [];
+  if (!Array.isArray(payload)) return [asCaption(payload)];
+
+  // Older Caption Creator releases sent a bare string in the UI payload. Some
+  // ComfyUI builds expanded it into an array of characters during transport.
+  // Rejoin that legacy shape so saved workflows remain readable after upgrade.
+  if (payload.length > 1 && payload.every((item) => typeof item === "string" && item.length <= 1)) {
+    return [payload.join("")];
+  }
+  if (payload.length === 1) return [asCaption(payload[0])];
+  return payload.map(asCaption);
+}
+
+function extractCaptions(message) {
+  const explicit = message?.captions ?? message?.ui?.captions;
+  if (explicit != null) return normalizeCaptions(explicit);
+
+  const legacy = message?.text ?? message?.ui?.text;
+  return normalizeLegacyText(legacy);
+}
+
+function formatPreview(captions) {
+  if (captions.length === 0) return EMPTY_PREVIEW;
+  if (captions.length === 1) return captions[0];
   return captions.map((caption, index) => `[${index + 1}]\n${caption}`).join("\n\n");
 }
 
@@ -40,8 +57,8 @@ function ensurePreview(node) {
 
   const textarea = document.createElement("textarea");
   textarea.readOnly = true;
-  textarea.value = node.properties?.[PREVIEW_PROPERTY] || "Caption preview appears here after execution.";
-  textarea.placeholder = "Caption preview appears here after execution.";
+  textarea.value = node.properties?.[PREVIEW_PROPERTY] || EMPTY_PREVIEW;
+  textarea.placeholder = EMPTY_PREVIEW;
   textarea.style.width = "100%";
   textarea.style.height = "180px";
   textarea.style.minHeight = "120px";
@@ -84,9 +101,9 @@ function ensurePreview(node) {
   return textarea;
 }
 
-function updatePreview(node, payload) {
+function updatePreview(node, captions) {
   const textarea = ensurePreview(node);
-  const value = formatPreview(payload);
+  const value = formatPreview(captions);
   textarea.value = value;
   node.properties ??= {};
   node.properties[PREVIEW_PROPERTY] = value;
@@ -109,15 +126,15 @@ app.registerExtension({
     const onExecuted = nodeType.prototype.onExecuted;
     nodeType.prototype.onExecuted = function (message) {
       onExecuted?.apply(this, arguments);
-      const payload = message?.text ?? message?.ui?.text;
-      if (payload != null) updatePreview(this, payload);
+      const captions = extractCaptions(message);
+      if (captions.length > 0) updatePreview(this, captions);
     };
 
     const onConfigure = nodeType.prototype.onConfigure;
     nodeType.prototype.onConfigure = function () {
       onConfigure?.apply(this, arguments);
       const stored = this.properties?.[PREVIEW_PROPERTY];
-      if (stored) updatePreview(this, stored);
+      if (stored) updatePreview(this, [stored]);
       else ensurePreview(this);
     };
   },

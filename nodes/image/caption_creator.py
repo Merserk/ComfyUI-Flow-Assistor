@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections import Counter, defaultdict
 from dataclasses import dataclass
 import gc
 import os
-import re
 import time
 from pathlib import Path
 from typing import Any
@@ -42,7 +40,7 @@ _MODEL_SPECS = {
 }
 _MODEL_SUBFOLDER = "flow-assistor"
 _DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024
-_DOWNLOAD_HEADERS = {"User-Agent": "ComfyUI-Flow-Assistor/2.3 Caption-Creator"}
+_DOWNLOAD_HEADERS = {"User-Agent": "ComfyUI-Flow-Assistor/2.4 Caption-Creator"}
 
 # This is only an emergency guard against a model that never emits its stop
 # token. It is intentionally fixed and independent of the requested word count.
@@ -50,17 +48,17 @@ _GENERATION_TOKEN_CEILING = 512
 _CAPTION_MAX_EDGE = 784
 _VISION_ALIGNMENT = 28  # Qwen patch_size (14) * merge_size (2).
 
-# Factual captioning benefits from restrained sampling, but near-greedy settings
-# can lock an autoregressive model into a repeated phrase. These settings keep a
-# deterministic seed while leaving enough probability mass to escape such loops.
+# Moderate deterministic sampling avoids both near-greedy repetition loops and
+# the aggressive token suppression that can push a quantized model into unusual
+# meta-text. The fixed seed keeps identical inputs reproducible.
 _GENERATION_OPTIONS = {
     "do_sample": True,
-    "temperature": 0.48,
-    "top_k": 32,
-    "top_p": 0.88,
-    "min_p": 0.03,
-    "repetition_penalty": 1.20,
-    "presence_penalty": 0.15,
+    "temperature": 0.70,
+    "top_k": 64,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "repetition_penalty": 1.05,
+    "presence_penalty": 0.0,
     "seed": 42,
 }
 
@@ -69,51 +67,9 @@ _MODEL_LOCK = asyncio.Lock()
 _CACHED_MODEL_PATH: Path | None = None
 _CACHED_CLIP: Any = None
 
-_WORD_RE = re.compile(r"\b[\w'-]+\b", flags=re.UNICODE)
-_SENTENCE_RE = re.compile(r"[^.!?]+(?:[.!?]+[\"')\]]*|$)", flags=re.DOTALL)
-_END_PUNCTUATION_RE = re.compile(r"[.!?][\"')\]]*$")
-_COMMON_WORDS = frozenset(
-    {
-        "a",
-        "an",
-        "and",
-        "are",
-        "as",
-        "at",
-        "be",
-        "by",
-        "for",
-        "from",
-        "has",
-        "in",
-        "is",
-        "it",
-        "of",
-        "on",
-        "or",
-        "that",
-        "the",
-        "their",
-        "there",
-        "this",
-        "to",
-        "with",
-    }
-)
-
 
 class CaptionCreatorError(RuntimeError):
     """Raised when Caption Creator cannot validate, load, or run its model."""
-
-
-@dataclass(frozen=True)
-class _GenerationResult:
-    text: str
-    token_count: int
-    hit_ceiling: bool
-    issues: tuple[str, ...]
-    cleaned: bool
-    duration_seconds: float
 
 
 @dataclass(frozen=True)
@@ -387,42 +343,17 @@ def _normalize_words(words: int) -> int:
 
 def _build_prompt(words: int) -> str:
     words = _normalize_words(words)
-    length_instruction = (
-        "Include all useful clearly visible detail; there is no required word count."
-        if words == 0
-        else (
-            f"Aim for approximately {words} words. Do not pad the caption to reach that number, "
-            "and finish the current sentence naturally before stopping."
+    if words == 0:
+        return (
+            "You are a precise image captioner. Describe only what is clearly visible "
+            "in one concise plain English paragraph. Do not include reasoning, notes, "
+            "labels, markdown, speculation, or comments about the task. Output only the caption."
         )
-    )
     return (
-        "Write one factual image-caption paragraph using complete sentences. "
-        "Describe only details directly visible in the image. Do not guess identity, exact location, "
-        "intent, relationships, hidden events, or details that cannot be seen. "
-        "Mention every useful visible detail no more than once. Never restate, rephrase, or repeat "
-        "a noun phrase, clause, sentence, object, background element, or observation. "
-        f"{length_instruction} "
-        "Stop after the final complete sentence. Return only the caption, with no heading, label, "
-        "analysis, or extra commentary."
+        "You are a precise image captioner. Describe only what is clearly visible "
+        f"in one plain English paragraph of about {words} words. Do not include reasoning, "
+        "notes, labels, markdown, speculation, or comments about the task. Output only the caption."
     )
-
-
-def _clean_text(value: Any, *, allow_empty: bool = False) -> str:
-    text = str(value or "")
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL)
-    for token in (
-        "<|assistant|>",
-        "<|end|>",
-        "<|im_end|>",
-        "<|endoftext|>",
-        "<|im_start|>",
-    ):
-        text = text.replace(token, " ")
-    text = re.sub(r"^\s*(?:assistant|caption)\s*:\s*", "", text, flags=re.IGNORECASE)
-    text = " ".join(text.split()).strip()
-    if not text and not allow_empty:
-        raise CaptionCreatorError("The model stopped before generating caption text.")
-    return text
 
 
 def _validate_image_batch(image: Any) -> Any:
@@ -669,150 +600,6 @@ def _log_residency(info: _ResidencyInfo, model_precision: str) -> None:
     )
 
 
-def _normalized_words(text: str) -> list[str]:
-    return [match.group(0).casefold() for match in _WORD_RE.finditer(text)]
-
-
-def _normalize_fragment(text: str) -> str:
-    return " ".join(_normalized_words(text))
-
-
-def _split_sentences(text: str) -> list[str]:
-    return [part.strip() for part in _SENTENCE_RE.findall(text) if part.strip()]
-
-
-def _find_repeated_ngram_start(text: str) -> int | None:
-    matches = list(_WORD_RE.finditer(text))
-    words = [match.group(0).casefold() for match in matches]
-    if len(words) < 18:
-        return None
-
-    candidates: list[int] = []
-    # A long exact phrase appearing twice is already suspicious. Shorter phrases
-    # require three non-overlapping occurrences to avoid trimming normal prose.
-    for ngram_size in range(14, 4, -1):
-        required_occurrences = 2 if ngram_size >= 8 else 3
-        positions: dict[tuple[str, ...], list[int]] = defaultdict(list)
-        for index in range(len(words) - ngram_size + 1):
-            key = tuple(words[index : index + ngram_size])
-            positions[key].append(index)
-        for occurrences in positions.values():
-            non_overlapping: list[int] = []
-            for index in occurrences:
-                if not non_overlapping or index >= non_overlapping[-1] + ngram_size:
-                    non_overlapping.append(index)
-            if len(non_overlapping) >= required_occurrences:
-                repeat_index = non_overlapping[1]
-                if repeat_index >= 12:
-                    candidates.append(matches[repeat_index].start())
-        if candidates:
-            break
-    return min(candidates) if candidates else None
-
-
-def _quality_issues(text: str, *, hit_ceiling: bool = False) -> tuple[str, ...]:
-    issues: list[str] = []
-    words = _normalized_words(text)
-
-    if hit_ceiling:
-        issues.append("token_ceiling")
-    if not _END_PUNCTUATION_RE.search(text.strip()):
-        issues.append("incomplete_sentence")
-
-    sentences = [_normalize_fragment(sentence) for sentence in _split_sentences(text)]
-    substantial_sentences = [sentence for sentence in sentences if len(sentence.split()) >= 5]
-    if len(substantial_sentences) != len(set(substantial_sentences)):
-        issues.append("repeated_sentence")
-
-    clauses = [
-        _normalize_fragment(clause)
-        for clause in re.split(r"[,;:]\s*", text)
-        if len(_normalized_words(clause)) >= 6
-    ]
-    if len(clauses) != len(set(clauses)):
-        issues.append("repeated_clause")
-
-    if _find_repeated_ngram_start(text) is not None:
-        issues.append("repeated_ngram")
-
-    if len(words) >= 55:
-        unique_ratio = len(set(words)) / len(words)
-        if unique_ratio < 0.34:
-            issues.append("low_vocabulary_diversity")
-
-        content_counts = Counter(word for word in words if word not in _COMMON_WORDS and len(word) > 2)
-        if content_counts:
-            most_common_count = content_counts.most_common(1)[0][1]
-            if most_common_count >= 9 and most_common_count / len(words) > 0.11:
-                issues.append("excessive_word_repetition")
-
-    return tuple(dict.fromkeys(issues))
-
-
-def _trim_at_repeated_sentence(text: str) -> str:
-    seen: set[str] = set()
-    output: list[str] = []
-    for sentence in _split_sentences(text):
-        normalized = _normalize_fragment(sentence)
-        if len(normalized.split()) >= 5 and normalized in seen:
-            break
-        if normalized:
-            seen.add(normalized)
-        output.append(sentence)
-    return " ".join(output).strip()
-
-
-def _trim_at_duplicate_clause(text: str) -> str:
-    parts = re.split(r"((?:,|;|:)\s*)", text)
-    seen: set[str] = set()
-    output: list[str] = []
-    index = 0
-    while index < len(parts):
-        clause = parts[index]
-        separator = parts[index + 1] if index + 1 < len(parts) else ""
-        normalized = _normalize_fragment(clause)
-        if len(normalized.split()) >= 6 and normalized in seen:
-            break
-        if normalized:
-            seen.add(normalized)
-        output.append(clause)
-        output.append(separator)
-        index += 2
-    return "".join(output).rstrip(" ,;:")
-
-
-def _finish_at_sentence_boundary(text: str) -> str:
-    text = text.strip(" ,;:")
-    if not text:
-        return text
-    if _END_PUNCTUATION_RE.search(text):
-        return text
-
-    boundaries = list(re.finditer(r"[.!?][\"')\]]*", text))
-    if boundaries:
-        end = boundaries[-1].end()
-        prefix = text[:end].strip()
-        if len(_normalized_words(prefix)) >= max(5, int(len(_normalized_words(text)) * 0.35)):
-            return prefix
-
-    # A useful caption without punctuation is preferable to returning nothing.
-    return f"{text}."
-
-
-def _sanitize_candidate(text: str) -> tuple[str, bool]:
-    original = _clean_text(text)
-    sanitized = _trim_at_repeated_sentence(original)
-    sanitized = _trim_at_duplicate_clause(sanitized)
-    repeated_start = _find_repeated_ngram_start(sanitized)
-    if repeated_start is not None:
-        sanitized = sanitized[:repeated_start].rstrip(" ,;:")
-    sanitized = " ".join(sanitized.split()).strip()
-    sanitized = _finish_at_sentence_boundary(sanitized)
-    if not sanitized:
-        raise CaptionCreatorError("The model generated only repeated or unusable text.")
-    return sanitized, sanitized != original
-
-
 def _generated_token_count(generated_ids: Any) -> int:
     shape = getattr(generated_ids, "shape", None)
     if shape is not None:
@@ -836,64 +623,62 @@ def _generate_one(
     log_device: bool,
 ) -> str:
     prompt = _build_prompt(words)
+
     try:
         with torch.inference_mode():
-            tokens = clip.tokenize(
-                prompt,
-                image=image,
-                skip_template=False,
-                min_length=1,
-                thinking=False,
-            )
+            try:
+                tokens = clip.tokenize(
+                    prompt,
+                    image=image,
+                    skip_template=False,
+                    min_length=1,
+                    thinking=False,
+                )
+            except TypeError as exc:
+                raise CaptionCreatorError(
+                    "Caption Creator requires a current ComfyUI tokenizer that supports "
+                    "thinking=False for Qwen3-VL. Update ComfyUI."
+                ) from exc
+
             residency = _prefer_accelerator_residency(clip, tokens)
             if log_device:
                 _log_residency(residency, model_precision)
 
             started = time.perf_counter()
-            generated_ids = clip.generate(
-                tokens,
-                max_length=_GENERATION_TOKEN_CEILING,
-                **_GENERATION_OPTIONS,
-            )
+            try:
+                generated_ids = clip.generate(
+                    tokens,
+                    max_length=_GENERATION_TOKEN_CEILING,
+                    **_GENERATION_OPTIONS,
+                )
+            except TypeError as exc:
+                raise CaptionCreatorError(
+                    "Caption Creator requires a current ComfyUI generation API with sampling, "
+                    "repetition_penalty, presence_penalty, and min_p support. Update ComfyUI."
+                ) from exc
             duration = time.perf_counter() - started
-            raw_text = _clean_text(clip.decode(generated_ids), allow_empty=True)
+            decoded_text = clip.decode(generated_ids)
     except CaptionCreatorError:
         raise
-    except TypeError as exc:
-        raise CaptionCreatorError(
-            "Caption Creator requires a current ComfyUI generation API with sampling, "
-            "repetition_penalty, presence_penalty, and min_p support. Update ComfyUI."
-        ) from exc
     except Exception as exc:
         raise CaptionCreatorError(f"Caption generation failed: {exc}") from exc
 
-    if not raw_text:
+    if not isinstance(decoded_text, str):
+        raise CaptionCreatorError(
+            "The model decoder returned a non-text value instead of a caption."
+        )
+    if decoded_text == "":
         raise CaptionCreatorError("The model stopped before generating caption text.")
 
     token_count = _generated_token_count(generated_ids)
     hit_ceiling = token_count >= _GENERATION_TOKEN_CEILING
-    raw_issues = _quality_issues(raw_text, hit_ceiling=hit_ceiling)
-    sanitized, cleaned = _sanitize_candidate(raw_text)
-    sanitized_issues = _quality_issues(sanitized, hit_ceiling=False)
-    issues = tuple(dict.fromkeys((*raw_issues, *sanitized_issues)))
-    result = _GenerationResult(
-        text=sanitized,
-        token_count=token_count,
-        hit_ceiling=hit_ceiling,
-        issues=issues,
-        cleaned=cleaned,
-        duration_seconds=duration,
-    )
-
-    issue_text = ",".join(result.issues) if result.issues else "none"
     print(
         "[Caption Creator] "
-        f"generation_tokens={result.token_count}, duration={result.duration_seconds:.2f}s, "
-        f"hit_ceiling={str(result.hit_ceiling).lower()}, "
-        f"cleaned={str(result.cleaned).lower()}, issues={issue_text}",
+        f"generation_tokens={token_count}, duration={duration:.2f}s, "
+        f"hit_ceiling={str(hit_ceiling).lower()}",
         flush=True,
     )
-    return result.text
+    return decoded_text
 
 
 class CaptionCreator(io.ComfyNode):
@@ -907,7 +692,7 @@ class CaptionCreator(io.ComfyNode):
             category=IMAGE_CAPTION,
             description=(
                 "Creates a factual caption for each input image with a native Qwen3-VL "
-                "ConvRot text encoder. The word setting is an approximate target, not a cutoff."
+                "ConvRot text encoder. Thinking is disabled and decoded text is returned unchanged."
             ),
             inputs=[
                 io.Image.Input("image", tooltip="A ComfyUI IMAGE tensor; batches are supported."),
@@ -972,7 +757,7 @@ class CaptionCreator(io.ComfyNode):
             for index in range(int(caption_batch.shape[0]))
         ]
         text = "\n".join(captions)
-        return io.NodeOutput(text, ui={"text": captions})
+        return io.NodeOutput(text, ui={"text": text})
 
 
 __all__ = [

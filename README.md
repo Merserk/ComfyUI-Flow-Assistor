@@ -24,7 +24,7 @@
 
 3. Restart ComfyUI.
 
-> **Requirements:** Python 3.10+ and a current ComfyUI build with the V3 node API (`comfy_api.latest`). Caption Creator additionally requires native `CLIPType.KREA2` and Qwen3-VL ConvRot support. Version `2.3.0` is V3-only.
+> **Requirements:** Python 3.10+ and a current ComfyUI build with the V3 node API (`comfy_api.latest`). Caption Creator additionally requires native `CLIPType.KREA2` and Qwen3-VL ConvRot support. Version `2.4.0` is V3-only.
 
 All 26 nodes are organized under:
 
@@ -90,7 +90,7 @@ Missing models can be downloaded automatically and are stored in:
 ComfyUI/models/text_encoders/flow-assistor/
 ```
 
-Disable `auto_download` to manage the model files manually. Caption Creator checks for ComfyUI's native `CLIPType.KREA2` support and reports a clear upgrade error when the installed text-encoder loader is too old for the selected format. It performs one generation pass per image, cleans a repeated trailing loop instead of silently starting a second progress pass, and uses a fixed 512-token emergency ceiling that is independent of the requested word count. Oversized caption inputs are reduced to a maximum 784-pixel edge for faster vision processing. On an accelerator-enabled ComfyUI installation, the node asks ComfyUI's model manager to keep the text encoder fully resident on the configured GPU when VRAM permits, then falls back to managed GPU offloading if a full load is not possible. Detailed execution, current-placement, offload, residency, memory, token-count, and timing information is written to the console. The latest result also appears in a scrollable preview inside the node.
+Disable `auto_download` to manage the model files manually. Caption Creator checks for ComfyUI's native `CLIPType.KREA2` support and reports a clear upgrade error when the installed text-encoder loader is too old for the selected format. It performs one generation pass per image, keeps Qwen3-VL thinking disabled, and returns the model decoder's caption directly without custom cleanup, repetition trimming, punctuation repair, or word-count truncation. A fixed 512-token emergency ceiling remains independent of the requested word count. Oversized caption inputs are reduced to a maximum 784-pixel edge for faster vision processing. On an accelerator-enabled ComfyUI installation, the node asks ComfyUI's model manager to keep the text encoder fully resident on the configured GPU when VRAM permits, then falls back to managed GPU offloading if a full load is not possible. Device residency, token count, timing, and emergency-ceiling status are written to the console. The exact output also appears in the node's scrollable preview.
 
 ---
 

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import gc
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ import aiohttp
 import torch
 import torch.nn.functional as F
 
+import comfy.model_management as model_management
 import comfy.sd
 import folder_paths
 from comfy_api.latest import ComfyAPI, io
@@ -40,33 +42,26 @@ _MODEL_SPECS = {
 }
 _MODEL_SUBFOLDER = "flow-assistor"
 _DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024
-_DOWNLOAD_HEADERS = {"User-Agent": "ComfyUI-Flow-Assistor/2.2 Caption-Creator"}
+_DOWNLOAD_HEADERS = {"User-Agent": "ComfyUI-Flow-Assistor/2.3 Caption-Creator"}
 
-# This is an emergency guard against a model that never emits its stop token.
-# It is intentionally fixed and is not derived from the requested word count.
-_GENERATION_TOKEN_CEILING = 1024
-_CAPTION_MAX_EDGE = 1024
+# This is only an emergency guard against a model that never emits its stop
+# token. It is intentionally fixed and independent of the requested word count.
+_GENERATION_TOKEN_CEILING = 512
+_CAPTION_MAX_EDGE = 784
 _VISION_ALIGNMENT = 28  # Qwen patch_size (14) * merge_size (2).
 
-_PRIMARY_GENERATION = {
+# Factual captioning benefits from restrained sampling, but near-greedy settings
+# can lock an autoregressive model into a repeated phrase. These settings keep a
+# deterministic seed while leaving enough probability mass to escape such loops.
+_GENERATION_OPTIONS = {
     "do_sample": True,
-    "temperature": 0.35,
-    "top_k": 24,
-    "top_p": 0.82,
-    "min_p": 0.04,
-    "repetition_penalty": 1.16,
-    "presence_penalty": 0.12,
+    "temperature": 0.48,
+    "top_k": 32,
+    "top_p": 0.88,
+    "min_p": 0.03,
+    "repetition_penalty": 1.20,
+    "presence_penalty": 0.15,
     "seed": 42,
-}
-_RETRY_GENERATION = {
-    "do_sample": True,
-    "temperature": 0.25,
-    "top_k": 16,
-    "top_p": 0.72,
-    "min_p": 0.06,
-    "repetition_penalty": 1.24,
-    "presence_penalty": 0.22,
-    "seed": 314159,
 }
 
 _API = ComfyAPI()
@@ -117,7 +112,22 @@ class _GenerationResult:
     token_count: int
     hit_ceiling: bool
     issues: tuple[str, ...]
-    score: float
+    cleaned: bool
+    duration_seconds: float
+
+
+@dataclass(frozen=True)
+class _ResidencyInfo:
+    execution_device: str
+    current_device: str
+    offload_device: str
+    residency: str
+    dynamic_vram: bool
+    free_memory_before: int | None
+    loaded_memory: int | None
+    model_memory: int | None
+    accelerator_name: str
+    full_load_error: str | None = None
 
 
 def _text_encoder_root() -> Path:
@@ -240,13 +250,28 @@ def _release_cached_clip() -> None:
     if old_clip is None:
         return
 
+    patcher = getattr(old_clip, "patcher", None)
+    unload = getattr(model_management, "unload_model_and_clones", None)
+    if patcher is not None and callable(unload):
+        try:
+            unload(patcher)
+        except Exception:
+            # Deleting the last strong reference still lets ComfyUI's model
+            # finalizer release the model; explicit unloading is best-effort.
+            pass
+
     del old_clip
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
 
-def _load_clip_from_path(model_path: Path, model_precision: str):
+def _load_clip_from_path(
+    model_path: Path,
+    model_precision: str,
+    *,
+    model_options: dict[str, Any] | None = None,
+):
     clip_types = getattr(comfy.sd, "CLIPType", None)
     clip_type = getattr(clip_types, "KREA2", None)
     if clip_type is None:
@@ -260,7 +285,7 @@ def _load_clip_from_path(model_path: Path, model_precision: str):
             ckpt_paths=[str(model_path)],
             embedding_directory=folder_paths.get_folder_paths("embeddings"),
             clip_type=clip_type,
-            model_options={},
+            model_options=model_options or {},
         )
     except Exception as exc:
         raise CaptionCreatorError(
@@ -268,6 +293,48 @@ def _load_clip_from_path(model_path: Path, model_precision: str):
             f"ComfyUI's native text-encoder loader: {exc}. Update ComfyUI if this "
             "model format is not supported by your installation."
         ) from exc
+
+
+def _preferred_initial_model_options(model_path: Path) -> dict[str, Any]:
+    """Prefer constructing the text encoder on the configured accelerator.
+
+    ComfyUI normally constructs large text encoders on their offload device and
+    moves/stages them later. When there is comfortable headroom, initial GPU
+    construction avoids the misleading ``current: cpu`` state and an extra
+    first-use transfer. The normal ComfyUI path remains the fallback.
+    """
+
+    try:
+        device = model_management.text_encoder_device()
+    except Exception:
+        return {}
+    if _device_type(device) == "cpu":
+        return {}
+
+    free_memory = _safe_free_memory(device)
+    try:
+        file_size = int(model_path.stat().st_size)
+    except OSError:
+        return {}
+    # Keep room for the visual prefill, KV cache, CUDA context, and allocator
+    # fragmentation. The file size is a conservative proxy for quantized weight
+    # memory and is available before the model is instantiated.
+    reserve = max(int(1.5 * 1024**3), int(file_size * 0.25))
+    required = int(file_size * 1.15) + reserve
+    if free_memory is not None and free_memory < required:
+        print(
+            "[Caption Creator] GPU-first model construction skipped because "
+            f"{_format_mib(free_memory)} is free and approximately "
+            f"{_format_mib(required)} is preferred; using managed loading.",
+            flush=True,
+        )
+        return {}
+
+    print(
+        f"[Caption Creator] Loading the caption model directly on {device}.",
+        flush=True,
+    )
+    return {"load_device": device, "initial_device": device}
 
 
 async def _load_clip(model_precision: str, auto_download: bool):
@@ -279,7 +346,26 @@ async def _load_clip(model_precision: str, auto_download: bool):
             return _CACHED_CLIP
 
         _release_cached_clip()
-        clip = _load_clip_from_path(model_path, model_precision)
+        initial_options = _preferred_initial_model_options(model_path)
+        try:
+            clip = _load_clip_from_path(
+                model_path,
+                model_precision,
+                model_options=initial_options,
+            )
+        except CaptionCreatorError as accelerator_exc:
+            if not initial_options:
+                raise
+            print(
+                "[Caption Creator] Direct accelerator construction failed; "
+                f"falling back to ComfyUI-managed loading: {accelerator_exc}",
+                flush=True,
+            )
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            clip = _load_clip_from_path(model_path, model_precision, model_options={})
+
         _CACHED_MODEL_PATH = model_path
         _CACHED_CLIP = clip
         return clip
@@ -299,37 +385,43 @@ def _normalize_words(words: int) -> int:
     return words
 
 
-def _build_prompt(words: int, *, strict_retry: bool = False) -> str:
+def _build_prompt(words: int) -> str:
     words = _normalize_words(words)
     length_instruction = (
         "Include all useful clearly visible detail; there is no required word count."
         if words == 0
-        else f"Use close to {words} words, but finish the current sentence naturally before stopping."
-    )
-    retry_instruction = (
-        " Be especially concise: do not repeat any noun phrase, clause, sentence, or detail."
-        if strict_retry
-        else ""
+        else (
+            f"Aim for approximately {words} words. Do not pad the caption to reach that number, "
+            "and finish the current sentence naturally before stopping."
+        )
     )
     return (
         "Write one factual image-caption paragraph using complete sentences. "
         "Describe only details directly visible in the image. Do not guess identity, exact location, "
         "intent, relationships, hidden events, or details that cannot be seen. "
-        "Mention each visible detail once, without restating or rephrasing it. "
-        f"{length_instruction}{retry_instruction} "
-        "End after a complete sentence. Return only the caption, with no heading, label, analysis, "
-        "or extra commentary."
+        "Mention every useful visible detail no more than once. Never restate, rephrase, or repeat "
+        "a noun phrase, clause, sentence, object, background element, or observation. "
+        f"{length_instruction} "
+        "Stop after the final complete sentence. Return only the caption, with no heading, label, "
+        "analysis, or extra commentary."
     )
 
 
-def _clean_text(value: Any) -> str:
+def _clean_text(value: Any, *, allow_empty: bool = False) -> str:
     text = str(value or "")
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL)
-    text = text.replace("<|assistant|>", " ").replace("<|end|>", " ")
+    for token in (
+        "<|assistant|>",
+        "<|end|>",
+        "<|im_end|>",
+        "<|endoftext|>",
+        "<|im_start|>",
+    ):
+        text = text.replace(token, " ")
     text = re.sub(r"^\s*(?:assistant|caption)\s*:\s*", "", text, flags=re.IGNORECASE)
     text = " ".join(text.split()).strip()
-    if not text:
-        raise CaptionCreatorError("The model generated empty text.")
+    if not text and not allow_empty:
+        raise CaptionCreatorError("The model stopped before generating caption text.")
     return text
 
 
@@ -392,12 +484,189 @@ def _prepare_caption_image(image_batch: Any) -> tuple[Any, tuple[int, int], tupl
     return resized, original_size, (target_width, target_height)
 
 
-def _model_device(clip: Any) -> str:
+def _safe_call_int(owner: Any, method_name: str) -> int | None:
+    method = getattr(owner, method_name, None)
+    if not callable(method):
+        return None
+    try:
+        return int(method())
+    except Exception:
+        return None
+
+
+def _safe_free_memory(device: Any) -> int | None:
+    try:
+        return int(model_management.get_free_memory(device))
+    except Exception:
+        return None
+
+
+def _device_type(device: Any) -> str:
+    return str(getattr(device, "type", str(device).split(":", 1)[0])).lower()
+
+
+def _current_model_device(patcher: Any) -> str:
+    for owner in (patcher, getattr(patcher, "model", None)):
+        if owner is None:
+            continue
+        method = getattr(owner, "current_loaded_device", None)
+        if callable(method):
+            try:
+                value = method()
+                if value is not None:
+                    return str(value)
+            except Exception:
+                pass
+
+    model = getattr(patcher, "model", None)
+    device = getattr(model, "device", None)
+    if device is not None:
+        return str(device)
+
+    parameters = getattr(model, "parameters", None)
+    if callable(parameters):
+        try:
+            return str(next(parameters()).device)
+        except Exception:
+            pass
+    return "unknown"
+
+
+def _accelerator_name(device: Any) -> str:
+    if _device_type(device) == "cuda" and torch.cuda.is_available():
+        try:
+            index = getattr(device, "index", None)
+            if index is None:
+                index = torch.cuda.current_device()
+            return torch.cuda.get_device_name(index)
+        except Exception:
+            return "CUDA GPU"
+    return str(device)
+
+
+def _estimated_inference_memory(clip: Any, tokens: Any) -> int:
+    estimator = getattr(getattr(clip, "cond_stage_model", None), "memory_estimation_function", None)
     patcher = getattr(clip, "patcher", None)
     device = getattr(patcher, "load_device", None)
-    if device is None:
-        device = getattr(patcher, "current_device", None)
-    return str(device if device is not None else "ComfyUI-managed/unknown")
+    if not callable(estimator) or device is None:
+        return 0
+    try:
+        return max(0, int(estimator(tokens, device=device)))
+    except Exception:
+        return 0
+
+
+def _prefer_accelerator_residency(clip: Any, tokens: Any) -> _ResidencyInfo:
+    patcher = getattr(clip, "patcher", None)
+    if patcher is None:
+        return _ResidencyInfo(
+            execution_device="unknown",
+            current_device="unknown",
+            offload_device="unknown",
+            residency="unknown",
+            dynamic_vram=False,
+            free_memory_before=None,
+            loaded_memory=None,
+            model_memory=None,
+            accelerator_name="unknown",
+            full_load_error="CLIP patcher is unavailable",
+        )
+
+    execution_device = getattr(patcher, "load_device", torch.device("cpu"))
+    offload_device = getattr(patcher, "offload_device", torch.device("cpu"))
+    free_before = _safe_free_memory(execution_device)
+    dynamic_method = getattr(patcher, "is_dynamic", None)
+    try:
+        dynamic_vram = bool(dynamic_method()) if callable(dynamic_method) else False
+    except Exception:
+        dynamic_vram = False
+
+    full_load_error: str | None = None
+    if _device_type(execution_device) != "cpu":
+        memory_required = _estimated_inference_memory(clip, tokens)
+        try:
+            model_management.load_models_gpu(
+                [patcher],
+                memory_required=memory_required,
+                force_full_load=True,
+            )
+        except Exception as exc:
+            full_load_error = str(exc)
+            print(
+                "[Caption Creator] Full accelerator residency was unavailable; "
+                f"falling back to ComfyUI-managed dynamic loading: {exc}",
+                flush=True,
+            )
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            try:
+                model_management.load_models_gpu(
+                    [patcher],
+                    memory_required=memory_required,
+                )
+            except Exception as fallback_exc:
+                raise CaptionCreatorError(
+                    "Failed to load the caption model onto the configured execution device "
+                    f"{execution_device}: {fallback_exc}"
+                ) from fallback_exc
+
+    loaded_memory = _safe_call_int(patcher, "loaded_size")
+    model_memory = _safe_call_int(patcher, "model_size")
+    full_resident = bool(
+        loaded_memory is not None
+        and model_memory is not None
+        and model_memory > 0
+        and loaded_memory >= int(model_memory * 0.98)
+    )
+
+    if _device_type(execution_device) == "cpu":
+        residency = "cpu"
+    elif full_resident:
+        residency = "full_accelerator"
+        # The patcher may support dynamic loading, but it is not actively
+        # offloading when the complete model is resident on the accelerator.
+        dynamic_vram = False
+    else:
+        residency = "dynamic_accelerator_offload"
+
+    current_device = _current_model_device(patcher)
+    # Dynamic quantized patchers can report the storage device even when every
+    # weight is resident on the execution device. Loaded-size accounting is the
+    # more reliable indicator in that case.
+    if full_resident and _device_type(execution_device) != "cpu":
+        current_device = str(execution_device)
+
+    return _ResidencyInfo(
+        execution_device=str(execution_device),
+        current_device=current_device,
+        offload_device=str(offload_device),
+        residency=residency,
+        dynamic_vram=dynamic_vram,
+        free_memory_before=free_before,
+        loaded_memory=loaded_memory,
+        model_memory=model_memory,
+        accelerator_name=_accelerator_name(execution_device),
+        full_load_error=full_load_error,
+    )
+
+
+def _format_mib(value: int | None) -> str:
+    if value is None:
+        return "unknown"
+    return f"{value / (1024 * 1024):.0f} MiB"
+
+
+def _log_residency(info: _ResidencyInfo, model_precision: str) -> None:
+    print(
+        "[Caption Creator] "
+        f"precision={model_precision}, execution_device={info.execution_device}, "
+        f"current_device={info.current_device}, offload_device={info.offload_device}, "
+        f"residency={info.residency}, dynamic_vram={str(info.dynamic_vram).lower()}, "
+        f"accelerator={info.accelerator_name}, "
+        f"free_before={_format_mib(info.free_memory_before)}, "
+        f"model_loaded={_format_mib(info.loaded_memory)}/{_format_mib(info.model_memory)}",
+        flush=True,
+    )
 
 
 def _normalized_words(text: str) -> list[str]:
@@ -419,7 +688,10 @@ def _find_repeated_ngram_start(text: str) -> int | None:
         return None
 
     candidates: list[int] = []
-    for ngram_size in range(12, 5, -1):
+    # A long exact phrase appearing twice is already suspicious. Shorter phrases
+    # require three non-overlapping occurrences to avoid trimming normal prose.
+    for ngram_size in range(14, 4, -1):
+        required_occurrences = 2 if ngram_size >= 8 else 3
         positions: dict[tuple[str, ...], list[int]] = defaultdict(list)
         for index in range(len(words) - ngram_size + 1):
             key = tuple(words[index : index + ngram_size])
@@ -429,8 +701,10 @@ def _find_repeated_ngram_start(text: str) -> int | None:
             for index in occurrences:
                 if not non_overlapping or index >= non_overlapping[-1] + ngram_size:
                     non_overlapping.append(index)
-            if len(non_overlapping) >= 3:
-                candidates.append(matches[non_overlapping[1]].start())
+            if len(non_overlapping) >= required_occurrences:
+                repeat_index = non_overlapping[1]
+                if repeat_index >= 12:
+                    candidates.append(matches[repeat_index].start())
         if candidates:
             break
     return min(candidates) if candidates else None
@@ -475,13 +749,13 @@ def _quality_issues(text: str, *, hit_ceiling: bool = False) -> tuple[str, ...]:
     return tuple(dict.fromkeys(issues))
 
 
-def _remove_duplicate_sentences(text: str) -> str:
+def _trim_at_repeated_sentence(text: str) -> str:
     seen: set[str] = set()
     output: list[str] = []
     for sentence in _split_sentences(text):
         normalized = _normalize_fragment(sentence)
         if len(normalized.split()) >= 5 and normalized in seen:
-            continue
+            break
         if normalized:
             seen.add(normalized)
         output.append(sentence)
@@ -518,49 +792,50 @@ def _finish_at_sentence_boundary(text: str) -> str:
     if boundaries:
         end = boundaries[-1].end()
         prefix = text[:end].strip()
-        if len(_normalized_words(prefix)) >= max(5, int(len(_normalized_words(text)) * 0.4)):
+        if len(_normalized_words(prefix)) >= max(5, int(len(_normalized_words(text)) * 0.35)):
             return prefix
 
-    # A usable caption without punctuation is preferable to an empty output.
+    # A useful caption without punctuation is preferable to returning nothing.
     return f"{text}."
 
 
-def _sanitize_candidate(text: str) -> str:
-    text = _clean_text(text)
-    # Remove exact sentence/clause loops before the broader n-gram fallback so a
-    # repeated clause is cut at its delimiter rather than in the middle of words.
-    text = _remove_duplicate_sentences(text)
-    text = _trim_at_duplicate_clause(text)
-    repeated_start = _find_repeated_ngram_start(text)
+def _sanitize_candidate(text: str) -> tuple[str, bool]:
+    original = _clean_text(text)
+    sanitized = _trim_at_repeated_sentence(original)
+    sanitized = _trim_at_duplicate_clause(sanitized)
+    repeated_start = _find_repeated_ngram_start(sanitized)
     if repeated_start is not None:
-        text = text[:repeated_start].rstrip(" ,;:")
-    text = " ".join(text.split()).strip()
-    text = _finish_at_sentence_boundary(text)
-    if not text:
+        sanitized = sanitized[:repeated_start].rstrip(" ,;:")
+    sanitized = " ".join(sanitized.split()).strip()
+    sanitized = _finish_at_sentence_boundary(sanitized)
+    if not sanitized:
         raise CaptionCreatorError("The model generated only repeated or unusable text.")
-    return text
+    return sanitized, sanitized != original
 
 
-def _candidate_score(text: str, issues: tuple[str, ...], words_target: int, hit_ceiling: bool) -> float:
-    score = 100.0 - 24.0 * len(issues)
-    if hit_ceiling:
-        score -= 20.0
-    if _END_PUNCTUATION_RE.search(text):
-        score += 8.0
-    word_count = len(_normalized_words(text))
-    if words_target > 0 and word_count > 0:
-        relative_distance = abs(word_count - words_target) / max(words_target, 1)
-        score -= min(12.0, relative_distance * 8.0)
-    return score
+def _generated_token_count(generated_ids: Any) -> int:
+    shape = getattr(generated_ids, "shape", None)
+    if shape is not None:
+        try:
+            if len(shape) > 0:
+                return int(shape[-1])
+        except Exception:
+            pass
+    try:
+        return int(len(generated_ids))
+    except Exception:
+        return 0
 
 
-def _generate_attempt(
+def _generate_one(
     clip: Any,
     image: Any,
-    prompt: str,
-    generation_options: dict[str, Any],
-    words_target: int,
-) -> _GenerationResult:
+    words: int,
+    model_precision: str,
+    *,
+    log_device: bool,
+) -> str:
+    prompt = _build_prompt(words)
     try:
         with torch.inference_mode():
             tokens = clip.tokenize(
@@ -570,12 +845,18 @@ def _generate_attempt(
                 min_length=1,
                 thinking=False,
             )
+            residency = _prefer_accelerator_residency(clip, tokens)
+            if log_device:
+                _log_residency(residency, model_precision)
+
+            started = time.perf_counter()
             generated_ids = clip.generate(
                 tokens,
                 max_length=_GENERATION_TOKEN_CEILING,
-                **generation_options,
+                **_GENERATION_OPTIONS,
             )
-            raw_text = _clean_text(clip.decode(generated_ids))
+            duration = time.perf_counter() - started
+            raw_text = _clean_text(clip.decode(generated_ids), allow_empty=True)
     except CaptionCreatorError:
         raise
     except TypeError as exc:
@@ -586,59 +867,33 @@ def _generate_attempt(
     except Exception as exc:
         raise CaptionCreatorError(f"Caption generation failed: {exc}") from exc
 
-    token_count = len(generated_ids)
+    if not raw_text:
+        raise CaptionCreatorError("The model stopped before generating caption text.")
+
+    token_count = _generated_token_count(generated_ids)
     hit_ceiling = token_count >= _GENERATION_TOKEN_CEILING
     raw_issues = _quality_issues(raw_text, hit_ceiling=hit_ceiling)
-    sanitized = _sanitize_candidate(raw_text)
-    sanitized_issues = _quality_issues(sanitized, hit_ceiling=hit_ceiling)
+    sanitized, cleaned = _sanitize_candidate(raw_text)
+    sanitized_issues = _quality_issues(sanitized, hit_ceiling=False)
     issues = tuple(dict.fromkeys((*raw_issues, *sanitized_issues)))
-    return _GenerationResult(
+    result = _GenerationResult(
         text=sanitized,
         token_count=token_count,
         hit_ceiling=hit_ceiling,
         issues=issues,
-        score=_candidate_score(sanitized, issues, words_target, hit_ceiling),
+        cleaned=cleaned,
+        duration_seconds=duration,
     )
 
-
-def _needs_retry(result: _GenerationResult) -> bool:
-    retry_reasons = {
-        "token_ceiling",
-        "incomplete_sentence",
-        "repeated_sentence",
-        "repeated_clause",
-        "repeated_ngram",
-        "low_vocabulary_diversity",
-        "excessive_word_repetition",
-    }
-    return any(issue in retry_reasons for issue in result.issues)
-
-
-def _generate_one(clip: Any, image: Any, words: int) -> str:
-    primary = _generate_attempt(
-        clip,
-        image,
-        _build_prompt(words),
-        _PRIMARY_GENERATION,
-        words,
-    )
-    if not _needs_retry(primary):
-        return primary.text
-
+    issue_text = ",".join(result.issues) if result.issues else "none"
     print(
-        "[Caption Creator] Retrying a degenerated caption ("
-        + ", ".join(primary.issues)
-        + ").",
+        "[Caption Creator] "
+        f"generation_tokens={result.token_count}, duration={result.duration_seconds:.2f}s, "
+        f"hit_ceiling={str(result.hit_ceiling).lower()}, "
+        f"cleaned={str(result.cleaned).lower()}, issues={issue_text}",
         flush=True,
     )
-    retry = _generate_attempt(
-        clip,
-        image,
-        _build_prompt(words, strict_retry=True),
-        _RETRY_GENERATION,
-        words,
-    )
-    return max((primary, retry), key=lambda candidate: candidate.score).text
+    return result.text
 
 
 class CaptionCreator(io.ComfyNode):
@@ -700,14 +955,20 @@ class CaptionCreator(io.ComfyNode):
         clip = await _load_clip(str(model_precision), bool(auto_download))
 
         print(
-            f"[Caption Creator] precision={model_precision}, device={_model_device(clip)}, "
-            f"image={original_size[0]}x{original_size[1]}, "
-            f"caption_input={caption_size[0]}x{caption_size[1]}",
+            f"[Caption Creator] image={original_size[0]}x{original_size[1]}, "
+            f"caption_input={caption_size[0]}x{caption_size[1]}, "
+            f"batch={int(caption_batch.shape[0])}",
             flush=True,
         )
 
         captions = [
-            _generate_one(clip, caption_batch[index : index + 1], words)
+            _generate_one(
+                clip,
+                caption_batch[index : index + 1],
+                words,
+                str(model_precision),
+                log_device=index == 0,
+            )
             for index in range(int(caption_batch.shape[0]))
         ]
         text = "\n".join(captions)
